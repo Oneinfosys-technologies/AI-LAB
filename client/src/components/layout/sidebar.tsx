@@ -16,10 +16,13 @@ import {
   Building2,
   Brain,
   MessageSquare,
-  Activity
+  Activity,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useState } from "react";
 
 interface SidebarProps {
   className?: string;
@@ -29,12 +32,17 @@ interface SidebarProps {
 export function Sidebar({ className, isMobile = false }: SidebarProps) {
   const { user, logoutMutation } = useAuth();
   const [location] = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   const isSuperAdmin = user?.role === "superadmin";
 
   const handleLogout = () => {
     logoutMutation.mutate();
+  };
+
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
   };
 
   const menuItems = [
@@ -132,15 +140,24 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
   return (
     <aside 
       className={cn(
-        "fixed top-0 left-0 z-40 h-screen w-64 transition-transform duration-300 ease-in-out",
+        "fixed top-0 left-0 z-40 h-screen transition-all duration-300 ease-in-out",
         isMobile && "-translate-x-full",
+        isCollapsed ? "w-20" : "w-64",
         "bg-white dark:bg-slate-800 shadow-lg",
         className
       )}
     >
       <div className="p-5 flex flex-col h-full">
-        <div className="flex items-center mb-8">
-          <Logo />
+        <div className="flex items-center justify-between mb-8">
+          {!isCollapsed && <Logo />}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="ml-auto"
+          >
+            {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+          </Button>
         </div>
         
         <nav className="flex-1">
@@ -153,21 +170,24 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
                       "flex items-center p-3 text-base rounded-lg",
                       location === item.path 
                         ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400"
-                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50",
+                      isCollapsed && "justify-center"
                     )}
                   >
                     {item.icon}
-                    {item.name}
+                    {!isCollapsed && <span className="ml-3">{item.name}</span>}
                   </a>
                 </Link>
               </li>
             ))}
           </ul>
           
-          <h3 className="mt-6 mb-2 px-3 text-sm font-medium text-primary-600 dark:text-primary-400 flex items-center">
-            <Brain className="h-4 w-4 mr-1" />
-            <span>AI Health</span>
-          </h3>
+          {!isCollapsed && (
+            <h3 className="mt-6 mb-2 px-3 text-sm font-medium text-primary-600 dark:text-primary-400 flex items-center">
+              <Brain className="h-4 w-4 mr-1" />
+              <span>AI Health</span>
+            </h3>
+          )}
           <ul className="space-y-1">
             {aiFeatureItems.map((item) => (
               <li key={item.path}>
@@ -177,11 +197,12 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
                       "flex items-center p-3 text-base rounded-lg",
                       location === item.path 
                         ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400"
-                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50",
+                      isCollapsed && "justify-center"
                     )}
                   >
                     {item.icon}
-                    {item.name}
+                    {!isCollapsed && <span className="ml-3">{item.name}</span>}
                   </a>
                 </Link>
               </li>
@@ -190,9 +211,11 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
           
           {isAdmin && (
             <>
-              <h3 className="mt-6 mb-2 px-3 text-sm font-medium text-slate-500 dark:text-slate-400">
-                Admin
-              </h3>
+              {!isCollapsed && (
+                <h3 className="mt-6 mb-2 px-3 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Admin
+                </h3>
+              )}
               <ul className="space-y-1">
                 {adminMenuItems.map((item) => (
                   <li key={item.path}>
@@ -202,11 +225,12 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
                           "flex items-center p-3 text-base rounded-lg",
                           location === item.path 
                             ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400"
-                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50",
+                          isCollapsed && "justify-center"
                         )}
                       >
                         {item.icon}
-                        {item.name}
+                        {!isCollapsed && <span className="ml-3">{item.name}</span>}
                       </a>
                     </Link>
                   </li>
@@ -217,9 +241,11 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
           
           {isSuperAdmin && (
             <>
-              <h3 className="mt-6 mb-2 px-3 text-sm font-medium text-slate-500 dark:text-slate-400">
-                SuperAdmin
-              </h3>
+              {!isCollapsed && (
+                <h3 className="mt-6 mb-2 px-3 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  SuperAdmin
+                </h3>
+              )}
               <ul className="space-y-1">
                 {superAdminMenuItems.map((item) => (
                   <li key={item.path}>
@@ -229,11 +255,12 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
                           "flex items-center p-3 text-base rounded-lg",
                           location.startsWith(item.path.split('?')[0])
                             ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400"
-                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50",
+                          isCollapsed && "justify-center"
                         )}
                       >
                         {item.icon}
-                        {item.name}
+                        {!isCollapsed && <span className="ml-3">{item.name}</span>}
                       </a>
                     </Link>
                   </li>
@@ -244,15 +271,20 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
         </nav>
         
         <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-6">
-          <ThemeToggle variant="switch" label={true} className="mb-4" />
+          <ThemeToggle variant="switch" label={!isCollapsed} className="mb-4" />
           <Button
             variant="ghost"
-            className="w-full justify-start p-3 text-base rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+            className={cn(
+              "w-full justify-start p-3 text-base rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50",
+              isCollapsed && "justify-center"
+            )}
             onClick={handleLogout}
             disabled={logoutMutation.isPending}
           >
-            <LogOut className="mr-3 h-5 w-5" />
-            Sign Out
+            <LogOut className="h-5 w-5" />
+            {!isCollapsed && (
+              <span className="ml-3">Sign Out</span>
+            )}
             {logoutMutation.isPending && (
               <span className="spinner ml-2"></span>
             )}
