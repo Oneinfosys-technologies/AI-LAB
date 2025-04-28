@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
+import React from "react";
 
 interface SidebarProps {
   className?: string;
@@ -147,8 +148,8 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
         className
       )}
     >
-      <div className="p-5 flex flex-col h-full">
-        <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col h-full">
+        <div className="p-5 flex items-center justify-between">
           {!isCollapsed && <Logo />}
           <Button
             variant="ghost"
@@ -160,7 +161,7 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
           </Button>
         </div>
         
-        <nav className="flex-1">
+        <nav className="flex-1 overflow-y-auto px-3">
           <ul className="space-y-1">
             {menuItems.map((item) => (
               <li key={item.path}>
@@ -174,7 +175,12 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
                       isCollapsed && "justify-center"
                     )}
                   >
-                    {item.icon}
+                    {React.cloneElement(item.icon as React.ReactElement, { 
+                      className: cn(
+                        "h-5 w-5",
+                        isCollapsed ? "mr-0" : "mr-3"
+                      )
+                    })}
                     {!isCollapsed && <span className="ml-3">{item.name}</span>}
                   </a>
                 </Link>
@@ -201,7 +207,12 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
                       isCollapsed && "justify-center"
                     )}
                   >
-                    {item.icon}
+                    {React.cloneElement(item.icon as React.ReactElement, { 
+                      className: cn(
+                        "h-5 w-5",
+                        isCollapsed ? "mr-0" : "mr-3"
+                      )
+                    })}
                     {!isCollapsed && <span className="ml-3">{item.name}</span>}
                   </a>
                 </Link>
@@ -229,7 +240,12 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
                           isCollapsed && "justify-center"
                         )}
                       >
-                        {item.icon}
+                        {React.cloneElement(item.icon as React.ReactElement, { 
+                          className: cn(
+                            "h-5 w-5",
+                            isCollapsed ? "mr-0" : "mr-3"
+                          )
+                        })}
                         {!isCollapsed && <span className="ml-3">{item.name}</span>}
                       </a>
                     </Link>
@@ -259,7 +275,12 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
                           isCollapsed && "justify-center"
                         )}
                       >
-                        {item.icon}
+                        {React.cloneElement(item.icon as React.ReactElement, { 
+                          className: cn(
+                            "h-5 w-5",
+                            isCollapsed ? "mr-0" : "mr-3"
+                          )
+                        })}
                         {!isCollapsed && <span className="ml-3">{item.name}</span>}
                       </a>
                     </Link>
@@ -270,7 +291,7 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
           )}
         </nav>
         
-        <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-6">
+        <div className="border-t border-slate-200 dark:border-slate-700 p-4">
           <ThemeToggle variant="switch" label={!isCollapsed} className="mb-4" />
           <Button
             variant="ghost"
