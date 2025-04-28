@@ -28,6 +28,9 @@ const safetySettings = [
   },
 ];
 
+// System instructions for all prompts
+const LAB_ASSISTANT_PROMPT = `You are an expert Lab Management Assistant. Always recommend lab tests, explain medical terms simply, follow ISO lab standards, and behave professionally. You strictly follow NABL/ISO standards when suggesting. Explain abnormal results in very simple language.`;
+
 // Interface for test results
 export interface TestResult {
   name: string;
@@ -105,6 +108,8 @@ export async function generateTestInsights(results: TestResult[]): Promise<Insig
       });
 
       const prompt = `
+${LAB_ASSISTANT_PROMPT}
+
 You are a medical laboratory AI assistant providing insights on test results.
 Analyze these abnormal lab results, providing clear explanations and actionable recommendations.
 For each abnormal value, explain what it means in plain language for the patient and give appropriate health recommendations.
@@ -188,32 +193,34 @@ export async function generateHealthInsights(
 
     // Create the prompt with system context and test results
     const prompt = `
-    You are a highly skilled AI medical assistant helping patients understand their lab test results. 
-    You provide clear, accurate, and personalized advice based strictly on the provided test results.
-    
-    Please analyze the following lab test results and provide a comprehensive analysis:
-    
-    ${formattedResults}
-    
-    Please provide your analysis in the following JSON format:
+${LAB_ASSISTANT_PROMPT}
+
+You are a highly skilled AI medical assistant helping patients understand their lab test results. 
+You provide clear, accurate, and personalized advice based strictly on the provided test results.
+
+Please analyze the following lab test results and provide a comprehensive analysis:
+
+${formattedResults}
+
+Please provide your analysis in the following JSON format:
+{
+  "summary": "A brief summary of the overall health status based on these results",
+  "abnormalValues": [
     {
-      "summary": "A brief summary of the overall health status based on these results",
-      "abnormalValues": [
-        {
-          "name": "Name of the test",
-          "value": "Value of the test",
-          "explanation": "Clear explanation of what this abnormal value means",
-          "recommendation": "Specific recommendations for addressing this issue",
-          "severity": "One of: normal, low, high, critical"
-        }
-      ],
-      "dietaryRecommendations": ["List of specific dietary recommendations based on the results"],
-      "exerciseRecommendations": ["List of specific exercise recommendations based on the results"],
-      "lifestyleChanges": ["List of lifestyle changes that might help improve abnormal values"]
+      "name": "Name of the test",
+      "value": "Value of the test",
+      "explanation": "Clear explanation of what this abnormal value means",
+      "recommendation": "Specific recommendations for addressing this issue",
+      "severity": "One of: normal, low, high, critical"
     }
-    
-    Important: Be precise and personalized. Only include abnormal values that are outside their reference ranges. Provide helpful, actionable recommendations for each abnormal value.
-    `;
+  ],
+  "dietaryRecommendations": ["List of specific dietary recommendations based on the results"],
+  "exerciseRecommendations": ["List of specific exercise recommendations based on the results"],
+  "lifestyleChanges": ["List of lifestyle changes that might help improve abnormal values"]
+}
+
+Important: Be precise and personalized. Only include abnormal values that are outside their reference ranges. Provide helpful, actionable recommendations for each abnormal value.
+`;
 
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -287,16 +294,7 @@ export async function chatWithHealthAI(
       role: "model" as const,
       parts: [
         {
-          text: `You are a helpful medical assistant providing guidance on health-related questions. You should:
-          1. Provide accurate, evidence-based information
-          2. Always clarify that you're not replacing professional medical advice
-          3. Be empathetic and clear in your explanations
-          4. Focus on medically validated recommendations
-          5. If you don't know something, admit that rather than making up information
-          
-          ${contextStr}
-          
-          Now, please respond to the patient's questions.`,
+          text: `${LAB_ASSISTANT_PROMPT}\n\nYou are a helpful medical assistant providing guidance on health-related questions. You should:\n1. Provide accurate, evidence-based information\n2. Always clarify that you're not replacing professional medical advice\n3. Be empathetic and clear in your explanations\n4. Focus on medically validated recommendations\n5. If you don't know something, admit that rather than making up information\n\n${contextStr}\n\nNow, please respond to the patient's questions.`,
         },
       ],
     };
@@ -378,33 +376,35 @@ export async function generateDietPlan(
 
     // Create prompt for diet plan
     const prompt = `
-    As a nutritional expert, create a personalized 3-day diet plan based on the following lab test results:
-    
-    ${formattedResults}
-    
-    ${preferencesStr ? `Patient preferences:\n${preferencesStr}` : ""}
-    
-    Please provide the diet plan in the following JSON format:
+${LAB_ASSISTANT_PROMPT}
+
+As a nutritional expert, create a personalized 3-day diet plan based on the following lab test results:
+
+${formattedResults}
+
+${preferencesStr ? `Patient preferences:\n${preferencesStr}` : ""}
+
+Please provide the diet plan in the following JSON format:
+{
+  "summary": "A brief summary of the nutritional approach and its benefits for this specific health profile",
+  "dailyPlan": [
     {
-      "summary": "A brief summary of the nutritional approach and its benefits for this specific health profile",
-      "dailyPlan": [
+      "day": "Day 1",
+      "meals": [
         {
-          "day": "Day 1",
-          "meals": [
-            {
-              "name": "Meal name",
-              "description": "Brief description of the meal",
-              "ingredients": ["List of ingredients"],
-              "nutritionalBenefits": "How this meal addresses specific health concerns from the test results"
-            }
-          ]
+          "name": "Meal name",
+          "description": "Brief description of the meal",
+          "ingredients": ["List of ingredients"],
+          "nutritionalBenefits": "How this meal addresses specific health concerns from the test results"
         }
-      ],
-      "recommendations": ["General nutritional recommendations"]
+      ]
     }
-    
-    Important: Make sure each meal directly addresses health concerns identified in the test results. Provide scientific reasoning for your recommendations.
-    `;
+  ],
+  "recommendations": ["General nutritional recommendations"]
+}
+
+Important: Make sure each meal directly addresses health concerns identified in the test results. Provide scientific reasoning for your recommendations.
+`;
 
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
