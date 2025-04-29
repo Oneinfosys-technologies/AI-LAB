@@ -28,16 +28,34 @@ export function ReportViewer({ report, loading = false }: ReportViewerProps) {
   const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
-    if (report?.results && Array.isArray(report.results)) {
-      // If insights are already available in the report, use them
-      if (report.insights) {
-        setInsights(report.insights);
-        return;
+    // Always use real report results for AI insights
+    let results = report?.results;
+    if (typeof results === "string") {
+      try {
+        results = JSON.parse(results);
+      } catch {
+        results = null;
       }
-      
-      // Otherwise, generate insights from the results
+    }
+    let insightsInput: any[] = [];
+    if (results && typeof results === "object" && !Array.isArray(results) && report.test?.name?.toLowerCase().includes("cbc")) {
+      // CBC: convert object to array
+      insightsInput = [
+        { name: "Hemoglobin", value: results.hemoglobin, unit: "g/dL", referenceRange: "13.5-17.5" },
+        { name: "Hematocrit", value: results.hematocrit, unit: "%", referenceRange: "38-50" },
+        { name: "RBC", value: results.rbc, unit: "million/uL", referenceRange: "4.5-5.9" },
+        { name: "WBC", value: results.wbc, unit: "thousand/uL", referenceRange: "4.0-11.0" },
+        { name: "Platelet", value: results.platelet, unit: "thousand/uL", referenceRange: "150-450" },
+        { name: "MCV", value: results.mcv, unit: "fL", referenceRange: "80-100" },
+        { name: "MCH", value: results.mch, unit: "pg", referenceRange: "27-33" },
+        { name: "MCHC", value: results.mchc, unit: "g/dL", referenceRange: "32-36" },
+      ];
+    } else if (Array.isArray(results)) {
+      insightsInput = results;
+    }
+    if (insightsInput.length > 0) {
       setInsightsLoading(true);
-      generateTestInsights(report.results)
+      generateTestInsights(insightsInput)
         .then(result => {
           setInsights(result.insights);
           setInsightsLoading(false);
