@@ -90,7 +90,13 @@ export function BookingForm({ test }: BookingFormProps) {
       };
       
       const res = await apiRequest("POST", "/api/bookings", bookingData);
-      return await res.json();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.error("Booking API error:", json);
+        throw new Error(json.message || "Unknown error");
+      }
+      console.log("Booking API success:", json);
+      return json;
     },
     onSuccess: (data) => {
       toast({
@@ -100,10 +106,10 @@ export function BookingForm({ test }: BookingFormProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
       navigate("/");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Booking failed",
-        description: error.message,
+        description: error.message || String(error),
         variant: "destructive",
       });
       setIsConfirming(false);
