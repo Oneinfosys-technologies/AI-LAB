@@ -9,8 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Test } from "@shared/schema";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarIcon, Home, Building2, AlertCircle } from "lucide-react";
-import { addDays, format, addHours, setHours, setMinutes, isAfter } from "date-fns";
+import { CalendarIcon, Home, Building2, AlertCircle, Clock } from "lucide-react";
+import { addDays, format, addHours, setHours, setMinutes, isAfter, isBefore } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
   Form,
@@ -25,6 +25,8 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 interface BookingFormProps {
   test: Test;
@@ -51,6 +53,8 @@ const FormSchema = z.object({
 export function BookingForm({ test }: BookingFormProps) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [bookingData, setBookingData] = useState<any>(null);
 
   // Set min date to tomorrow and max date to 30 days from now
   const minDate = addDays(new Date(), 1);
@@ -88,7 +92,7 @@ export function BookingForm({ test }: BookingFormProps) {
       const res = await apiRequest("POST", "/api/bookings", bookingData);
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Booking successful!",
         description: `Your ${test.name} has been booked successfully.`,
@@ -102,6 +106,7 @@ export function BookingForm({ test }: BookingFormProps) {
         description: error.message,
         variant: "destructive",
       });
+      setIsConfirming(false);
     },
   });
 
@@ -113,8 +118,30 @@ export function BookingForm({ test }: BookingFormProps) {
       });
       return;
     }
+
+    // Validate time slot is not in the past
+    const now = new Date();
+    const bookingTime = new Date(data.scheduledDate);
+    bookingTime.setHours(selectedTimeSlot.getHours());
+    bookingTime.setMinutes(selectedTimeSlot.getMinutes());
+
+    if (isBefore(bookingTime, now)) {
+      toast({
+        title: "Invalid time slot",
+        description: "Please select a future time slot",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    bookingMutation.mutate(data);
+    setBookingData(data);
+    setIsConfirming(true);
+  }
+
+  function confirmBooking() {
+    if (bookingData) {
+      bookingMutation.mutate(bookingData);
+    }
   }
 
   // Generate time slots for the selected date
@@ -148,6 +175,73 @@ export function BookingForm({ test }: BookingFormProps) {
   };
 
   const timeSlots = form.watch("scheduledDate") ? getTimeSlots(form.watch("scheduledDate")) : [];
+
+  if (isConfirming && bookingData) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Confirm Booking</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Please confirm your booking details</AlertTitle>
+              <AlertDescription>
+                Review the details below before confirming your booking.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Test:</span>
+                <span className="font-medium">{test.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Collection Type:</span>
+                <span className="font-medium">
+                  {bookingData.collectionType === "home" ? "Home Collection" : "Lab Visit"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Date:</span>
+                <span className="font-medium">
+                  {format(bookingData.scheduledDate, "PPP")}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Time:</span>
+                <span className="font-medium">
+                  {selectedTimeSlot ? format(selectedTimeSlot, "h:mm a") : "Not selected"}
+                </span>
+              </div>
+              {bookingData.collectionType === "home" && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Address:</span>
+                  <span className="font-medium">{bookingData.address}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setIsConfirming(false)}
+              >
+                Back
+              </Button>
+              <Button
+                onClick={confirmBooking}
+                disabled={bookingMutation.isPending}
+              >
+                {bookingMutation.isPending ? "Confirming..." : "Confirm Booking"}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -257,7 +351,7 @@ export function BookingForm({ test }: BookingFormProps) {
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) => 
+                        disabled={(date) =>
                           date < minDate || date > maxDate
                         }
                         initialFocus
@@ -268,64 +362,58 @@ export function BookingForm({ test }: BookingFormProps) {
                 </FormItem>
               )}
             />
-            
+
             {/* Time Slots */}
-            {form.watch("scheduledDate") && (
-              <div className="space-y-3">
-                <FormLabel>Select Time Slot</FormLabel>
-                {timeSlots.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {timeSlots.map((slot, index) => (
-                      <Button
-                        key={index}
-                        type="button"
-                        variant={selectedTimeSlot && 
-                                selectedTimeSlot.getTime() === slot.getTime() 
-                                ? "default" : "outline"}
-                        onClick={() => setSelectedTimeSlot(slot)}
-                      >
-                        {format(slot, "h:mm a")}
-                      </Button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-amber-600 dark:text-amber-400">
-                    No available time slots for this date. Please select a different date.
-                  </p>
-                )}
+            <div className="space-y-2">
+              <FormLabel>Select Time Slot</FormLabel>
+              <div className="grid grid-cols-3 gap-2">
+                {timeSlots.map((slot) => (
+                  <Button
+                    key={slot.toISOString()}
+                    type="button"
+                    variant={selectedTimeSlot?.getTime() === slot.getTime() ? "default" : "outline"}
+                    className="flex items-center gap-2"
+                    onClick={() => setSelectedTimeSlot(slot)}
+                  >
+                    <Clock className="h-4 w-4" />
+                    {format(slot, "h:mm a")}
+                  </Button>
+                ))}
               </div>
-            )}
+              {timeSlots.length === 0 && (
+                <p className="text-sm text-slate-500">
+                  No available time slots for the selected date
+                </p>
+              )}
+            </div>
             
-            {/* Address (for home collection) */}
+            {/* Address for home collection */}
             {form.watch("collectionType") === "home" && (
               <FormField
                 control={form.control}
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Address</FormLabel>
+                    <FormLabel>Address for Home Collection</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Enter your complete address for sample collection" 
+                      <Textarea
+                        placeholder="Enter your complete address"
+                        className="resize-none"
                         {...field}
-                        className="min-h-[100px]"
                       />
                     </FormControl>
-                    <FormDescription>
-                      Please provide your complete address including landmark and pin code
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             )}
             
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full"
               disabled={bookingMutation.isPending}
             >
-              {bookingMutation.isPending ? "Booking..." : "Confirm Booking"}
+              {bookingMutation.isPending ? "Booking..." : "Proceed to Book"}
             </Button>
           </form>
         </Form>

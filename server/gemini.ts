@@ -52,6 +52,16 @@ export interface HealthInsight {
   dietaryRecommendations: string[];
   exerciseRecommendations: string[];
   lifestyleChanges: string[];
+  recommendedTests: Array<{
+    name: string;
+    reason: string;
+    urgency: "routine" | "soon" | "urgent";
+  }>;
+  healthTrends: Array<{
+    metric: string;
+    trend: "improving" | "stable" | "declining";
+    explanation: string;
+  }>;
 }
 
 // Interface for test insights response (this matches the OpenAI format for backward compatibility)
@@ -174,12 +184,18 @@ Provide analysis in the following JSON format:
 
 // Generate health insights from test results
 export async function generateHealthInsights(
-  testResults: TestResult[]
+  testResults: TestResult[],
+  userContext?: {
+    age?: number;
+    gender?: string;
+    knownConditions?: string[];
+    previousResults?: TestResult[];
+  }
 ): Promise<HealthInsight> {
   try {
     // Get the model and start generation
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro", // the newest Gemini model which was released May 13, 2024. do not change this unless explicitly requested by the user
+      model: "gemini-1.5-pro",
       safetySettings,
     });
 
@@ -191,6 +207,17 @@ export async function generateHealthInsights(
       )
       .join("\n");
 
+    // Format previous results if available
+    let previousResultsStr = "";
+    if (userContext?.previousResults?.length) {
+      previousResultsStr = "\nPrevious Test Results:\n" + userContext.previousResults
+        .map(
+          (result) =>
+            `${result.name}: ${result.value} ${result.unit} (Reference Range: ${result.referenceRange})`
+        )
+        .join("\n");
+    }
+
     // Create the prompt with system context and test results
     const prompt = `
 ${LAB_ASSISTANT_PROMPT}
@@ -198,9 +225,14 @@ ${LAB_ASSISTANT_PROMPT}
 You are a highly skilled AI medical assistant helping patients understand their lab test results. 
 You provide clear, accurate, and personalized advice based strictly on the provided test results.
 
-Please analyze the following lab test results and provide a comprehensive analysis:
+Patient Context:
+${userContext?.age ? `Age: ${userContext.age}\n` : ""}
+${userContext?.gender ? `Gender: ${userContext.gender}\n` : ""}
+${userContext?.knownConditions?.length ? `Known Conditions: ${userContext.knownConditions.join(", ")}\n` : ""}
 
+Current Test Results:
 ${formattedResults}
+${previousResultsStr}
 
 Please provide your analysis in the following JSON format:
 {
@@ -216,10 +248,30 @@ Please provide your analysis in the following JSON format:
   ],
   "dietaryRecommendations": ["List of specific dietary recommendations based on the results"],
   "exerciseRecommendations": ["List of specific exercise recommendations based on the results"],
-  "lifestyleChanges": ["List of lifestyle changes that might help improve abnormal values"]
+  "lifestyleChanges": ["List of lifestyle changes that might help improve abnormal values"],
+  "recommendedTests": [
+    {
+      "name": "Name of recommended test",
+      "reason": "Reason for recommending this test",
+      "urgency": "One of: routine, soon, urgent"
+    }
+  ],
+  "healthTrends": [
+    {
+      "metric": "Name of the health metric",
+      "trend": "One of: improving, stable, declining",
+      "explanation": "Explanation of the trend"
+    }
+  ]
 }
 
-Important: Be precise and personalized. Only include abnormal values that are outside their reference ranges. Provide helpful, actionable recommendations for each abnormal value.
+Important: 
+1. Be precise and personalized. Only include abnormal values that are outside their reference ranges.
+2. Provide helpful, actionable recommendations for each abnormal value.
+3. Consider the patient's context when making recommendations.
+4. If previous results are available, analyze trends and changes.
+5. Recommend additional tests only if medically relevant and necessary.
+6. Always emphasize consulting with healthcare professionals for medical advice.
 `;
 
     const result = await model.generateContent({

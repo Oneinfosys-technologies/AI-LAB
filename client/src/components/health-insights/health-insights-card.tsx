@@ -4,9 +4,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, AlertOctagon } from "lucide-react";
+import { Loader2, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, AlertOctagon, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { Link } from "wouter";
 
 interface HealthInsight {
   summary: string;
@@ -20,6 +21,16 @@ interface HealthInsight {
   dietaryRecommendations: string[];
   exerciseRecommendations: string[];
   lifestyleChanges: string[];
+  recommendedTests: Array<{
+    name: string;
+    reason: string;
+    urgency: "routine" | "soon" | "urgent";
+  }>;
+  healthTrends: Array<{
+    metric: string;
+    trend: "improving" | "stable" | "declining";
+    explanation: string;
+  }>;
 }
 
 interface TestResult {
@@ -73,6 +84,32 @@ export default function HealthInsightsCard({ reportId, testResults, isLoading = 
         return <Badge variant="outline" className="bg-orange-100 text-orange-800 hover:bg-orange-100">High</Badge>;
       case "critical":
         return <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">Critical</Badge>;
+      default:
+        return null;
+    }
+  };
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case "improving":
+        return <TrendingUp className="h-5 w-5 text-green-500" />;
+      case "declining":
+        return <TrendingDown className="h-5 w-5 text-red-500" />;
+      case "stable":
+        return <Minus className="h-5 w-5 text-blue-500" />;
+      default:
+        return null;
+    }
+  };
+
+  const getUrgencyBadge = (urgency: string) => {
+    switch (urgency) {
+      case "routine":
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-100">Routine</Badge>;
+      case "soon":
+        return <Badge variant="outline" className="bg-amber-100 text-amber-800 hover:bg-amber-100">Soon</Badge>;
+      case "urgent":
+        return <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">Urgent</Badge>;
       default:
         return null;
     }
@@ -133,10 +170,12 @@ export default function HealthInsightsCard({ reportId, testResults, isLoading = 
           </div>
         ) : insights ? (
           <Tabs defaultValue="summary">
-            <TabsList className="grid grid-cols-4 mb-4">
+            <TabsList className="grid grid-cols-6 mb-4">
               <TabsTrigger value="summary">Summary</TabsTrigger>
               <TabsTrigger value="abnormal">Abnormal Values</TabsTrigger>
-              <TabsTrigger value="diet">Diet</TabsTrigger>
+              <TabsTrigger value="trends">Health Trends</TabsTrigger>
+              <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+              <TabsTrigger value="tests">Recommended Tests</TabsTrigger>
               <TabsTrigger value="lifestyle">Lifestyle</TabsTrigger>
             </TabsList>
             
@@ -195,43 +234,102 @@ export default function HealthInsightsCard({ reportId, testResults, isLoading = 
                 </div>
               )}
             </TabsContent>
-            
-            <TabsContent value="diet" className="space-y-4">
-              <h3 className="font-medium text-lg mb-2">Dietary Recommendations</h3>
-              <ul className="space-y-2">
-                {insights.dietaryRecommendations.map((item, index) => (
-                  <li key={index} className="flex items-start gap-2 py-1">
-                    <div className="flex-shrink-0 mt-1">•</div>
-                    <p>{item}</p>
-                  </li>
-                ))}
-              </ul>
-              
-              <Button variant="outline" className="mt-4">
-                View Complete Diet Plan
-              </Button>
-            </TabsContent>
-            
-            <TabsContent value="lifestyle" className="space-y-4">
-              <div>
-                <h3 className="font-medium text-lg mb-2">Exercise Recommendations</h3>
-                <ul className="space-y-2">
-                  {insights.exerciseRecommendations.map((item, index) => (
-                    <li key={index} className="flex items-start gap-2 py-1">
-                      <div className="flex-shrink-0 mt-1">•</div>
-                      <p>{item}</p>
-                    </li>
+
+            <TabsContent value="trends" className="space-y-4">
+              {insights.healthTrends.length === 0 ? (
+                <Alert>
+                  <AlertTitle>No trend data available</AlertTitle>
+                  <AlertDescription>
+                    We need more test results over time to analyze health trends.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="space-y-4">
+                  {insights.healthTrends.map((trend, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium">{trend.metric}</h3>
+                        <div className="flex items-center gap-2">
+                          {getTrendIcon(trend.trend)}
+                          <Badge variant="outline" className={
+                            trend.trend === "improving" ? "bg-green-100 text-green-800" :
+                            trend.trend === "declining" ? "bg-red-100 text-red-800" :
+                            "bg-blue-100 text-blue-800"
+                          }>
+                            {trend.trend.charAt(0).toUpperCase() + trend.trend.slice(1)}
+                          </Badge>
+                        </div>
+                      </div>
+                      <p className="text-slate-600 dark:text-slate-400">{trend.explanation}</p>
+                    </div>
                   ))}
-                </ul>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="recommendations" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <h3 className="font-medium">Dietary Recommendations</h3>
+                  <ul className="space-y-2">
+                    {insights.dietaryRecommendations.map((rec, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-1" />
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="font-medium">Exercise Recommendations</h3>
+                  <ul className="space-y-2">
+                    {insights.exerciseRecommendations.map((rec, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-1" />
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              
-              <div className="mt-6">
-                <h3 className="font-medium text-lg mb-2">Lifestyle Changes</h3>
+            </TabsContent>
+
+            <TabsContent value="tests" className="space-y-4">
+              {insights.recommendedTests.length === 0 ? (
+                <Alert>
+                  <AlertTitle>No additional tests recommended</AlertTitle>
+                  <AlertDescription>
+                    Based on your current results, no additional tests are recommended at this time.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="space-y-4">
+                  {insights.recommendedTests.map((test, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium">{test.name}</h3>
+                        {getUrgencyBadge(test.urgency)}
+                      </div>
+                      <p className="text-slate-600 dark:text-slate-400 mb-4">{test.reason}</p>
+                      <Button size="sm" asChild>
+                        <Link href={`/tests?search=${encodeURIComponent(test.name)}`}>
+                          Book This Test
+                        </Link>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="lifestyle" className="space-y-4">
+              <div className="space-y-4">
+                <h3 className="font-medium">Lifestyle Changes</h3>
                 <ul className="space-y-2">
-                  {insights.lifestyleChanges.map((item, index) => (
-                    <li key={index} className="flex items-start gap-2 py-1">
-                      <div className="flex-shrink-0 mt-1">•</div>
-                      <p>{item}</p>
+                  {insights.lifestyleChanges.map((change, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-1" />
+                      <span>{change}</span>
                     </li>
                   ))}
                 </ul>
