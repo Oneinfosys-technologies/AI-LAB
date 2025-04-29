@@ -171,12 +171,22 @@ export function ActiveTests() {
                 <div className="mt-2 md:mt-0 flex gap-2 items-center">
                   <StatusBadge status={booking.status} />
                   {/* CBC Result Entry Button */}
-                  {booking.test?.name === "CBC" &&
-                    (booking.status === TEST_STATUSES.ANALYZING || booking.status === TEST_STATUSES.COMPLETED) && (
+                  {(() => {
+                    // Debug log
+                    console.log('Booking status:', booking.status, 'Test name:', booking.test?.name);
+                    const isCBC = booking.test?.name?.toLowerCase().includes("cbc");
+                    const statusStr = (booking.status || "").toLowerCase();
+                    const canEnterResult =
+                      isCBC &&
+                      (statusStr === "analyzing" ||
+                       statusStr === "analysis in progress" ||
+                       statusStr === "completed");
+                    return canEnterResult ? (
                       <Button size="sm" variant="secondary" onClick={() => setCbcModal({ open: true, bookingId: booking.id })}>
                         Enter CBC Result
                       </Button>
-                    )}
+                    ) : null;
+                  })()}
                 </div>
               </div>
               
