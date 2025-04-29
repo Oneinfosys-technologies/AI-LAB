@@ -36,18 +36,15 @@ const FormSchema = z.object({
   testId: z.number(),
   collectionType: z.enum(["home", "lab"]),
   scheduledDate: z.date(),
-  address: z.string().optional().refine((value, ctx) => {
-    const collectionType = ctx.path[0] === 'address' 
-      ? (ctx.parent as any).collectionType 
-      : null;
-    
-    if (collectionType === "home" && (!value || value.trim() === "")) {
-      return false;
-    }
-    return true;
-  }, {
-    message: "Address is required for home collection",
-  }),
+  address: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.collectionType === "home" && (!data.address || data.address.trim() === "")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Address is required for home collection",
+      path: ["address"],
+    });
+  }
 });
 
 export function BookingForm({ test }: BookingFormProps) {
