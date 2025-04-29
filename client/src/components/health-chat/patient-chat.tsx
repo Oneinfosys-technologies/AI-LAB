@@ -114,58 +114,63 @@ export default function PatientChat() {
     <div className="flex flex-col h-[calc(100vh-12rem)] max-w-3xl mx-auto">
       <h2 className="text-2xl font-semibold mb-4">Health Assistant</h2>
       <Card className="flex-grow overflow-hidden">
-        <ScrollArea className="h-[calc(100vh-16rem)]" ref={chatContainerRef}>
+        <ScrollArea className="h-[calc(100vh-16rem)]">
           <CardContent className="p-4">
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`flex items-start gap-2 mb-4 ${
-                  message.role === "user" ? "justify-end" : ""
-                }`}
-              >
-                {message.role === "model" && (
+            <div
+              ref={chatContainerRef}
+              className="overflow-y-auto max-h-[calc(100vh-20rem)] pr-2"
+            >
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex items-start gap-2 mb-4 ${
+                    message.role === "user" ? "justify-end" : ""
+                  }`}
+                >
+                  {message.role === "model" && (
+                    <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                      <Bot size={18} className="text-primary" />
+                    </div>
+                  )}
+                  <div
+                    className={`p-3 rounded-lg max-w-[80%] ${
+                      message.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    <div
+                      className={`text-xs mt-1 ${
+                        message.role === "user"
+                          ? "text-primary-foreground/70"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {message.timestamp.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                  </div>
+                  {message.role === "user" && (
+                    <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                      <User size={16} className="text-primary-foreground" />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex items-start gap-2 mb-4">
                   <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                     <Bot size={18} className="text-primary" />
                   </div>
-                )}
-                <div
-                  className={`p-3 rounded-lg max-w-[80%] ${
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{message.content}</p>
-                  <div
-                    className={`text-xs mt-1 ${
-                      message.role === "user"
-                        ? "text-primary-foreground/70"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {message.timestamp.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                  <div className="p-3 rounded-lg max-w-[80%] bg-muted">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
                 </div>
-                {message.role === "user" && (
-                  <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                    <User size={16} className="text-primary-foreground" />
-                  </div>
-                )}
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex items-start gap-2 mb-4">
-                <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                  <Bot size={18} className="text-primary" />
-                </div>
-                <div className="p-3 rounded-lg max-w-[80%] bg-muted">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
           <ScrollBar />
         </ScrollArea>
