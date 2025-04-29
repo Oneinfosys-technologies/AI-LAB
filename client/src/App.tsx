@@ -20,6 +20,7 @@ import SuperAdminLogin from "@/pages/sa-login";
 import SuperAdminDashboard from "@/pages/sa-dashboard";
 import HealthChat from "@/pages/health-chat";
 import HealthInsights from "@/pages/health-insights";
+import ReportingPage from "@/pages/admin/reporting";
 
 function Router() {
   return (
@@ -37,6 +38,7 @@ function Router() {
       <ProtectedRoute path="/health-insights" component={HealthInsights} />
       <ProtectedRoute path="/admin" component={AdminDashboard} roles={["admin", "superadmin"]} />
       <ProtectedRoute path="/admin/tests" component={TestManagement} roles={["admin", "superadmin"]} />
+      <ProtectedRoute path="/admin/reporting" component={ReportingPage} roles={["admin", "superadmin"]} />
       <ProtectedRoute path="/sa-dashboard" component={SuperAdminDashboard} roles={["superadmin"]} />
       <Route component={NotFound} />
     </Switch>
