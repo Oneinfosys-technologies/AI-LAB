@@ -28,34 +28,16 @@ export function ReportViewer({ report, loading = false }: ReportViewerProps) {
   const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
-    // Always use real report results for AI insights
-    let results = report?.results;
-    if (typeof results === "string") {
-      try {
-        results = JSON.parse(results);
-      } catch {
-        results = null;
+    if (report?.results && Array.isArray(report.results)) {
+      // If insights are already available in the report, use them
+      if (report.insights) {
+        setInsights(report.insights);
+        return;
       }
-    }
-    let insightsInput: any[] = [];
-    if (results && typeof results === "object" && !Array.isArray(results) && report.test?.name?.toLowerCase().includes("cbc")) {
-      // CBC: convert object to array
-      insightsInput = [
-        { name: "Hemoglobin", value: results.hemoglobin, unit: "g/dL", referenceRange: "13.5-17.5" },
-        { name: "Hematocrit", value: results.hematocrit, unit: "%", referenceRange: "38-50" },
-        { name: "RBC", value: results.rbc, unit: "million/uL", referenceRange: "4.5-5.9" },
-        { name: "WBC", value: results.wbc, unit: "thousand/uL", referenceRange: "4.0-11.0" },
-        { name: "Platelet", value: results.platelet, unit: "thousand/uL", referenceRange: "150-450" },
-        { name: "MCV", value: results.mcv, unit: "fL", referenceRange: "80-100" },
-        { name: "MCH", value: results.mch, unit: "pg", referenceRange: "27-33" },
-        { name: "MCHC", value: results.mchc, unit: "g/dL", referenceRange: "32-36" },
-      ];
-    } else if (Array.isArray(results)) {
-      insightsInput = results;
-    }
-    if (insightsInput.length > 0) {
+      
+      // Otherwise, generate insights from the results
       setInsightsLoading(true);
-      generateTestInsights(insightsInput)
+      generateTestInsights(report.results)
         .then(result => {
           setInsights(result.insights);
           setInsightsLoading(false);
@@ -153,18 +135,15 @@ export function ReportViewer({ report, loading = false }: ReportViewerProps) {
           <CardTitle>Test Results</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Robust result display: handle stringified JSON or array */}
-          {(() => {
-            let results = report.results;
-            if (typeof results === "string") {
-              try {
-                results = JSON.parse(results);
-              } catch {
-                return <p className="text-center py-4 text-slate-500 dark:text-slate-400">Could not parse result data.</p>;
-              }
+          {/* CBC-specific table */}
+          {report.test?.name === "CBC" && report.results && typeof report.results === "string" ? (() => {
+            let cbc;
+            try {
+              cbc = JSON.parse(report.results);
+            } catch {
+              cbc = null;
             }
-            // CBC: object with CBC fields
-            if (report.test?.name?.toLowerCase().includes("cbc") && results && typeof results === "object" && !Array.isArray(results)) {
+            if (cbc) {
               return (
                 <Table>
                   <TableHeader>
@@ -175,62 +154,62 @@ export function ReportViewer({ report, loading = false }: ReportViewerProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow><TableCell>Hemoglobin</TableCell><TableCell>{results.hemoglobin}</TableCell><TableCell>g/dL</TableCell></TableRow>
-                    <TableRow><TableCell>Hematocrit</TableCell><TableCell>{results.hematocrit}</TableCell><TableCell>%</TableCell></TableRow>
-                    <TableRow><TableCell>RBC</TableCell><TableCell>{results.rbc}</TableCell><TableCell>million/uL</TableCell></TableRow>
-                    <TableRow><TableCell>WBC</TableCell><TableCell>{results.wbc}</TableCell><TableCell>thousand/uL</TableCell></TableRow>
-                    <TableRow><TableCell>Platelet</TableCell><TableCell>{results.platelet}</TableCell><TableCell>thousand/uL</TableCell></TableRow>
-                    <TableRow className="bg-slate-50 dark:bg-slate-800"><TableCell>MCV</TableCell><TableCell>{results.mcv}</TableCell><TableCell>fL</TableCell></TableRow>
-                    <TableRow className="bg-slate-50 dark:bg-slate-800"><TableCell>MCH</TableCell><TableCell>{results.mch}</TableCell><TableCell>pg</TableCell></TableRow>
-                    <TableRow className="bg-slate-50 dark:bg-slate-800"><TableCell>MCHC</TableCell><TableCell>{results.mchc}</TableCell><TableCell>g/dL</TableCell></TableRow>
+                    <TableRow><TableCell>Hemoglobin</TableCell><TableCell>{cbc.hemoglobin}</TableCell><TableCell>g/dL</TableCell></TableRow>
+                    <TableRow><TableCell>Hematocrit</TableCell><TableCell>{cbc.hematocrit}</TableCell><TableCell>%</TableCell></TableRow>
+                    <TableRow><TableCell>RBC</TableCell><TableCell>{cbc.rbc}</TableCell><TableCell>million/uL</TableCell></TableRow>
+                    <TableRow><TableCell>WBC</TableCell><TableCell>{cbc.wbc}</TableCell><TableCell>thousand/uL</TableCell></TableRow>
+                    <TableRow><TableCell>Platelet</TableCell><TableCell>{cbc.platelet}</TableCell><TableCell>thousand/uL</TableCell></TableRow>
+                    <TableRow className="bg-slate-50 dark:bg-slate-800"><TableCell>MCV</TableCell><TableCell>{cbc.mcv}</TableCell><TableCell>fL</TableCell></TableRow>
+                    <TableRow className="bg-slate-50 dark:bg-slate-800"><TableCell>MCH</TableCell><TableCell>{cbc.mch}</TableCell><TableCell>pg</TableCell></TableRow>
+                    <TableRow className="bg-slate-50 dark:bg-slate-800"><TableCell>MCHC</TableCell><TableCell>{cbc.mchc}</TableCell><TableCell>g/dL</TableCell></TableRow>
                   </TableBody>
                 </Table>
               );
             }
-            // Generic: array of results
-            if (Array.isArray(results)) {
-              return (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Parameter</TableHead>
-                      <TableHead>Result</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead>Reference Range</TableHead>
-                      <TableHead>Status</TableHead>
+            return <p className="text-center py-4 text-slate-500 dark:text-slate-400">No CBC result data available</p>;
+          })() : report.results && Array.isArray(report.results) ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Parameter</TableHead>
+                  <TableHead>Result</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Reference Range</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {report.results.map((result, index) => {
+                  // Check if result is outside reference range
+                  let status = "normal";
+                  let statusText = "Normal";
+                  
+                  if (typeof result.value === 'number' && result.referenceRange) {
+                    const range = result.referenceRange.split('-').map(r => parseFloat(r.trim()));
+                    if (result.value < range[0]) {
+                      status = "low";
+                      statusText = "Low";
+                    } else if (result.value > range[1]) {
+                      status = "high";
+                      statusText = "High";
+                    }
+                  }
+                  
+                  return (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{result.name}</TableCell>
+                      <TableCell>{result.value}</TableCell>
+                      <TableCell>{result.unit}</TableCell>
+                      <TableCell>{result.referenceRange}</TableCell>
+                      <TableCell className={getSeverityColor(status)}>{statusText}</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {results.map((result, index) => {
-                      // Check if result is outside reference range
-                      let status = "normal";
-                      let statusText = "Normal";
-                      if (typeof result.value === 'number' && result.referenceRange) {
-                        const range = result.referenceRange.split('-').map(r => parseFloat(r.trim()));
-                        if (result.value < range[0]) {
-                          status = "low";
-                          statusText = "Low";
-                        } else if (result.value > range[1]) {
-                          status = "high";
-                          statusText = "High";
-                        }
-                      }
-                      return (
-                        <TableRow key={index}>
-                          <TableCell className="font-medium">{result.name}</TableCell>
-                          <TableCell>{result.value}</TableCell>
-                          <TableCell>{result.unit}</TableCell>
-                          <TableCell>{result.referenceRange}</TableCell>
-                          <TableCell className={getSeverityColor(status)}>{statusText}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              );
-            }
-            return <p className="text-center py-4 text-slate-500 dark:text-slate-400">No result data available</p>;
-          })()}
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-center py-4 text-slate-500 dark:text-slate-400">No result data available</p>
+          )}
         </CardContent>
       </Card>
 

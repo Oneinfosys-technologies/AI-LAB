@@ -356,35 +356,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get all reports (admin only)
-  app.get("/api/admin/reports", isAdmin, async (req, res) => {
-    try {
-      const reports = await storage.getReports();
-      
-      // Get tests, bookings, and users for each report
-      const result = await Promise.all(reports.map(async (report) => {
-        const booking = await storage.getBooking(report.bookingId);
-        const test = booking ? await storage.getTest(booking.testId) : null;
-        const user = booking ? await storage.getUser(booking.userId) : null;
-        
-        return {
-          ...report,
-          booking,
-          test,
-          user: user ? {
-            fullName: user.fullName,
-            email: user.email,
-            phone: user.phone
-          } : null
-        };
-      }));
-      
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ message: "Error fetching reports" });
-    }
-  });
-  
   // Create report for a booking (admin only)
   app.post("/api/admin/reports", isAdmin, async (req, res) => {
     try {
