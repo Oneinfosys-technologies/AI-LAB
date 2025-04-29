@@ -52,6 +52,27 @@ export function ActiveTests() {
     },
   });
   
+  // Booking status update mutation
+  const statusMutation = useMutation({
+    mutationFn: async ({ bookingId, status }: { bookingId: number; status: string }) => {
+      const res = await fetch(`/api/admin/bookings/${bookingId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Failed to update status");
+      return json;
+    },
+    onSuccess: () => {
+      toast({ title: "Status updated" });
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+  
   const toggleExpanded = (bookingId: number) => {
     setExpandedBookings(prev => ({
       ...prev,
@@ -150,11 +171,12 @@ export function ActiveTests() {
                 <div className="mt-2 md:mt-0 flex gap-2 items-center">
                   <StatusBadge status={booking.status} />
                   {/* CBC Result Entry Button */}
-                  {booking.test?.name === "CBC" && booking.status !== TEST_STATUSES.COMPLETED && (
-                    <Button size="sm" variant="secondary" onClick={() => setCbcModal({ open: true, bookingId: booking.id })}>
-                      Enter CBC Result
-                    </Button>
-                  )}
+                  {booking.test?.name === "CBC" &&
+                    (booking.status === TEST_STATUSES.ANALYZING || booking.status === TEST_STATUSES.COMPLETED) && (
+                      <Button size="sm" variant="secondary" onClick={() => setCbcModal({ open: true, bookingId: booking.id })}>
+                        Enter CBC Result
+                      </Button>
+                    )}
                 </div>
               </div>
               
@@ -173,39 +195,55 @@ export function ActiveTests() {
                 <div className="relative mt-4">
                   <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-200 dark:bg-slate-700 ml-3"></div>
                   <div className="space-y-6 relative z-10">
-                    {getStatusSteps(booking).map((step, idx) => (
-                      <div className="flex" key={idx}>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 
-                          ${step.completed 
-                            ? step.current 
-                              ? getStatusColor(step.status) + ' animate-pulse' 
-                              : 'bg-green-500' 
-                            : 'bg-slate-200 dark:bg-slate-700'}`}
-                        >
-                          {step.completed && !step.current ? (
-                            <Check className="text-white text-sm" />
-                          ) : step.current ? (
-                            <TestTube className="text-white text-sm" />
-                          ) : (
-                            <span className="material-icons-round text-slate-500 dark:text-slate-400 text-sm">
-                              {idx === 4 ? 'description' : 'science'}
-                            </span>
-                          )}
+                    {getStatusSteps(booking).map((step, idx) => {
+                      // Only allow marking the next incomplete step
+                      const canMark = !step.completed &&
+                        idx === getStatusSteps(booking).findIndex(s => !s.completed);
+                      return (
+                        <div className="flex" key={idx}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 
+                            ${step.completed 
+                              ? step.current 
+                                ? getStatusColor(step.status) + ' animate-pulse' 
+                                : 'bg-green-500' 
+                              : 'bg-slate-200 dark:bg-slate-700'}`}
+                          >
+                            {step.completed && !step.current ? (
+                              <Check className="text-white text-sm" />
+                            ) : step.current ? (
+                              <TestTube className="text-white text-sm" />
+                            ) : (
+                              <span className="material-icons-round text-slate-500 dark:text-slate-400 text-sm">
+                                {idx === 4 ? 'description' : 'science'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <h4 className={`font-medium ${!step.completed && 'text-slate-400 dark:text-slate-500'}`}> 
+                              {step.status === TEST_STATUSES.BOOKED && 'Test Booked'}
+                              {step.status === TEST_STATUSES.SAMPLE_COLLECTED && 'Sample Collected'}
+                              {step.status === TEST_STATUSES.PROCESSING && 'Sample Processing'}
+                              {step.status === TEST_STATUSES.ANALYZING && 'Analysis in Progress'}
+                              {step.status === TEST_STATUSES.COMPLETED && 'Report Generation'}
+                            </h4>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              {step.statusDate || (step.completed ? 'Completed' : 'Pending')}
+                            </p>
+                            {canMark && (
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                className="mt-2"
+                                disabled={statusMutation.isPending}
+                                onClick={() => statusMutation.mutate({ bookingId: booking.id, status: step.status })}
+                              >
+                                Mark as Complete
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                        <div className="ml-4">
-                          <h4 className={`font-medium ${!step.completed && 'text-slate-400 dark:text-slate-500'}`}>
-                            {step.status === TEST_STATUSES.BOOKED && 'Test Booked'}
-                            {step.status === TEST_STATUSES.SAMPLE_COLLECTED && 'Sample Collected'}
-                            {step.status === TEST_STATUSES.PROCESSING && 'Sample Processing'}
-                            {step.status === TEST_STATUSES.ANALYZING && 'Analysis in Progress'}
-                            {step.status === TEST_STATUSES.COMPLETED && 'Report Generation'}
-                          </h4>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {step.statusDate || (step.completed ? 'Completed' : 'Pending')}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
