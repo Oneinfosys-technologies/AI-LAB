@@ -135,7 +135,39 @@ export function ReportViewer({ report, loading = false }: ReportViewerProps) {
           <CardTitle>Test Results</CardTitle>
         </CardHeader>
         <CardContent>
-          {report.results && Array.isArray(report.results) ? (
+          {/* CBC-specific table */}
+          {report.test?.name === "CBC" && report.results && typeof report.results === "string" ? (() => {
+            let cbc;
+            try {
+              cbc = JSON.parse(report.results);
+            } catch {
+              cbc = null;
+            }
+            if (cbc) {
+              return (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Parameter</TableHead>
+                      <TableHead>Result</TableHead>
+                      <TableHead>Unit</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow><TableCell>Hemoglobin</TableCell><TableCell>{cbc.hemoglobin}</TableCell><TableCell>g/dL</TableCell></TableRow>
+                    <TableRow><TableCell>Hematocrit</TableCell><TableCell>{cbc.hematocrit}</TableCell><TableCell>%</TableCell></TableRow>
+                    <TableRow><TableCell>RBC</TableCell><TableCell>{cbc.rbc}</TableCell><TableCell>million/uL</TableCell></TableRow>
+                    <TableRow><TableCell>WBC</TableCell><TableCell>{cbc.wbc}</TableCell><TableCell>thousand/uL</TableCell></TableRow>
+                    <TableRow><TableCell>Platelet</TableCell><TableCell>{cbc.platelet}</TableCell><TableCell>thousand/uL</TableCell></TableRow>
+                    <TableRow className="bg-slate-50 dark:bg-slate-800"><TableCell>MCV</TableCell><TableCell>{cbc.mcv}</TableCell><TableCell>fL</TableCell></TableRow>
+                    <TableRow className="bg-slate-50 dark:bg-slate-800"><TableCell>MCH</TableCell><TableCell>{cbc.mch}</TableCell><TableCell>pg</TableCell></TableRow>
+                    <TableRow className="bg-slate-50 dark:bg-slate-800"><TableCell>MCHC</TableCell><TableCell>{cbc.mchc}</TableCell><TableCell>g/dL</TableCell></TableRow>
+                  </TableBody>
+                </Table>
+              );
+            }
+            return <p className="text-center py-4 text-slate-500 dark:text-slate-400">No CBC result data available</p>;
+          })() : report.results && Array.isArray(report.results) ? (
             <Table>
               <TableHeader>
                 <TableRow>

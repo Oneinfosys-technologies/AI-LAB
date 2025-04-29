@@ -12,6 +12,7 @@ import {
   TestResult,
   ChatMessage
 } from "./gemini";
+import { calculateCBC } from "./testCalculations";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
@@ -518,6 +519,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to get response from health assistant",
         error: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+
+  // ========== ADMIN: Manual Test Result Entry ========== //
+
+  // Admin enters CBC results for a booking
+  app.post("/api/admin/bookings/:id/cbc-result", isAdmin, async (req, res) => {
+    try {
+      const bookingId = parseInt(req.params.id);
+      const { hemoglobin, hematocrit, rbc, wbc, platelet } = req.body;
+      if (
+        typeof hemoglobin !== "number" ||
+        typeof hematocrit !== "number" ||
+        typeof rbc !== "number" ||
+        typeof wbc !== "number" ||
+        typeof platelet !== "number"
+      ) {
+        return res.status(400).json({ message: "All CBC values are required and must be numbers." });
+      }
+      // Calculate derived values
+      const cbcResult = calculateCBC({ hemoglobin, hematocrit, rbc, wbc, platelet });
+      // Save result in report (assume InsertReport type and storage.createReport exist)
+      const report = await storage.createReport({
+        bookingId,
+        testType: "CBC",
+        results: JSON.stringify(cbcResult),
+        generatedBy: req.user.id,
+      });
+      res.status(201).json({ message: "CBC result saved", report });
+    } catch (error) {
+      console.error("Error saving CBC result:", error);
+      res.status(500).json({ message: "Failed to save CBC result" });
     }
   });
 

@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Check, ChevronDown, TestTube } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Booking, TEST_STATUSES } from "@shared/schema";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { getStatusColor } from "@/lib/utils/ai-insights";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 interface BookingWithDetails extends Booking {
   test?: any;
@@ -17,13 +18,39 @@ interface BookingWithDetails extends Booking {
 
 export function ActiveTests() {
   const [expandedBookings, setExpandedBookings] = useState<Record<number, boolean>>({});
+  const [cbcModal, setCbcModal] = useState<{ open: boolean; bookingId?: number }>({ open: false });
+  const [cbcForm, setCbcForm] = useState({ hemoglobin: '', hematocrit: '', rbc: '', wbc: '', platelet: '' });
+  const { toast } = useToast();
   
-  const { data: bookings, isLoading } = useQuery<BookingWithDetails[]>({
+  const { data: bookings, isLoading, refetch } = useQuery<BookingWithDetails[]>({
     queryKey: ["/api/bookings"],
   });
   
   // Filter active tests (not completed)
   const activeTests = bookings?.filter(booking => booking.status !== TEST_STATUSES.COMPLETED);
+  
+  // CBC result mutation
+  const cbcMutation = useMutation({
+    mutationFn: async ({ bookingId, values }: { bookingId: number; values: any }) => {
+      const res = await fetch(`/api/admin/bookings/${bookingId}/cbc-result`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || "Failed to save CBC result");
+      return json;
+    },
+    onSuccess: () => {
+      toast({ title: "CBC result saved" });
+      setCbcModal({ open: false });
+      setCbcForm({ hemoglobin: '', hematocrit: '', rbc: '', wbc: '', platelet: '' });
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
   
   const toggleExpanded = (bookingId: number) => {
     setExpandedBookings(prev => ({
@@ -65,6 +92,43 @@ export function ActiveTests() {
         <CardTitle>Active Tests</CardTitle>
       </CardHeader>
       <CardContent>
+        {/* CBC Modal */}
+        {cbcModal.open && (
+          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg w-full max-w-md">
+              <h2 className="text-lg font-bold mb-4">Enter CBC Result</h2>
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  if (!cbcModal.bookingId) return;
+                  cbcMutation.mutate({
+                    bookingId: cbcModal.bookingId,
+                    values: {
+                      hemoglobin: Number(cbcForm.hemoglobin),
+                      hematocrit: Number(cbcForm.hematocrit),
+                      rbc: Number(cbcForm.rbc),
+                      wbc: Number(cbcForm.wbc),
+                      platelet: Number(cbcForm.platelet),
+                    },
+                  });
+                }}
+                className="space-y-3"
+              >
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="number" step="0.01" required placeholder="Hemoglobin (g/dL)" className="input input-bordered" value={cbcForm.hemoglobin} onChange={e => setCbcForm(f => ({ ...f, hemoglobin: e.target.value }))} />
+                  <input type="number" step="0.01" required placeholder="Hematocrit (%)" className="input input-bordered" value={cbcForm.hematocrit} onChange={e => setCbcForm(f => ({ ...f, hematocrit: e.target.value }))} />
+                  <input type="number" step="0.01" required placeholder="RBC (million/uL)" className="input input-bordered" value={cbcForm.rbc} onChange={e => setCbcForm(f => ({ ...f, rbc: e.target.value }))} />
+                  <input type="number" step="0.01" required placeholder="WBC (thousand/uL)" className="input input-bordered" value={cbcForm.wbc} onChange={e => setCbcForm(f => ({ ...f, wbc: e.target.value }))} />
+                  <input type="number" step="0.01" required placeholder="Platelet (thousand/uL)" className="input input-bordered" value={cbcForm.platelet} onChange={e => setCbcForm(f => ({ ...f, platelet: e.target.value }))} />
+                </div>
+                <div className="flex gap-2 justify-end mt-4">
+                  <Button type="button" variant="outline" onClick={() => setCbcModal({ open: false })}>Cancel</Button>
+                  <Button type="submit" disabled={cbcMutation.isPending}>{cbcMutation.isPending ? "Saving..." : "Save Result"}</Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
         {isLoading ? (
           <div className="space-y-4">
             <Skeleton className="h-32 w-full" />
@@ -83,8 +147,14 @@ export function ActiveTests() {
                     Test ID: <span className="font-mono">{booking.bookingId}</span>
                   </p>
                 </div>
-                <div className="mt-2 md:mt-0">
+                <div className="mt-2 md:mt-0 flex gap-2 items-center">
                   <StatusBadge status={booking.status} />
+                  {/* CBC Result Entry Button */}
+                  {booking.test?.name === "CBC" && booking.status !== TEST_STATUSES.COMPLETED && (
+                    <Button size="sm" variant="secondary" onClick={() => setCbcModal({ open: true, bookingId: booking.id })}>
+                      Enter CBC Result
+                    </Button>
+                  )}
                 </div>
               </div>
               
