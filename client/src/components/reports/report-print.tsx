@@ -135,19 +135,19 @@ export const ReportPrint: React.FC<ReportPrintProps> = ({ patient, cbc }) => {
               <td className="border border-black p-1">40-50</td>
             </tr>
             <tr>
-              <td className="border border-black p-1">M.C.V.</td>
+              <td className="border border-black p-1">M.C.V. (Mean Corpuscular Volume)</td>
               <td className="border border-black p-1">{cbc.mcv}</td>
               <td className="border border-black p-1">fl</td>
               <td className="border border-black p-1">76-96</td>
             </tr>
             <tr>
-              <td className="border border-black p-1">M.C.H.</td>
+              <td className="border border-black p-1">M.C.H. (Mean Corpuscular Hemoglobin)</td>
               <td className="border border-black p-1">{cbc.mch}</td>
               <td className="border border-black p-1">pg</td>
               <td className="border border-black p-1">27-32</td>
             </tr>
             <tr>
-              <td className="border border-black p-1">M.C.H.C.</td>
+              <td className="border border-black p-1">M.C.H.C. (Mean Corpuscular Hemoglobin Concentration)</td>
               <td className="border border-black p-1">{cbc.mchc}</td>
               <td className="border border-black p-1">%</td>
               <td className="border border-black p-1">32-36</td>

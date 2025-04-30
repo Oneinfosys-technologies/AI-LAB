@@ -19,21 +19,29 @@ export default function ReportPrintPage() {
   }
 
   // Parse CBC and patient info from report
+  let results = report.results;
+  if (typeof results === "string") {
+    try {
+      results = JSON.parse(results);
+    } catch {
+      results = {};
+    }
+  }
   const cbc = {
-    hemoglobin: report.results?.hemoglobin,
-    totalLeukocyteCount: report.results?.totalLeukocyteCount,
-    neutrophils: report.results?.neutrophils,
-    lymphocytes: report.results?.lymphocytes,
-    eosinophils: report.results?.eosinophils,
-    monocytes: report.results?.monocytes,
-    basophils: report.results?.basophils,
-    rbcCount: report.results?.rbcCount,
-    pcv: report.results?.pcv,
-    mcv: report.results?.mcv,
-    mch: report.results?.mch,
-    mchc: report.results?.mchc,
-    rdwCv: report.results?.rdwCv,
-    plateletCount: report.results?.plateletCount,
+    hemoglobin: results?.hemoglobin,
+    totalLeukocyteCount: results?.totalLeukocyteCount,
+    neutrophils: results?.neutrophils,
+    lymphocytes: results?.lymphocytes,
+    eosinophils: results?.eosinophils,
+    monocytes: results?.monocytes,
+    basophils: results?.basophils,
+    rbcCount: results?.rbcCount,
+    pcv: results?.pcv,
+    mcv: results?.mcv,
+    mch: results?.mch,
+    mchc: results?.mchc,
+    rdwCv: results?.rdwCv,
+    plateletCount: results?.plateletCount,
   };
   const patient = {
     name: report.user?.fullName || "N/A",
