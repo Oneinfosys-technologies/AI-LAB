@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,45 @@ interface BookingWithDetails extends Booking {
   statuses?: any[];
 }
 
+// Define test panels and their fields, units, normal ranges, and formulas
+const TEST_PANELS = {
+  CBC: {
+    fields: [
+      { name: "hemoglobin", label: "Hemoglobin (g/dL)", unit: "g/dL", required: true },
+      { name: "hematocrit", label: "Hematocrit (%)", unit: "%", required: true },
+      { name: "rbc", label: "RBC (million/uL)", unit: "million/uL", required: true },
+      { name: "wbc", label: "WBC (thousand/uL)", unit: "thousand/uL", required: true },
+      { name: "platelet", label: "Platelet (thousand/uL)", unit: "thousand/uL", required: true },
+    ],
+    calculate: values => values, // No calculated fields for now
+  },
+  LFT: {
+    fields: [
+      { name: "total_bilirubin", label: "Total Bilirubin (mg/dL)", unit: "mg/dL", required: true },
+      { name: "direct_bilirubin", label: "Direct Bilirubin (mg/dL)", unit: "mg/dL", required: true },
+      { name: "indirect_bilirubin", label: "Indirect Bilirubin (mg/dL)", unit: "mg/dL", required: false, calculated: true },
+      { name: "sgot_ast", label: "SGOT/AST (U/L)", unit: "U/L", required: true },
+      { name: "sgpt_alt", label: "SGPT/ALT (U/L)", unit: "U/L", required: true },
+      { name: "alkaline_phosphatase", label: "Alkaline Phosphatase (U/L)", unit: "U/L", required: true },
+      { name: "total_protein", label: "Total Protein (g/dL)", unit: "g/dL", required: true },
+      { name: "albumin", label: "Albumin (g/dL)", unit: "g/dL", required: true },
+      { name: "globulin", label: "Globulin (g/dL)", unit: "g/dL", required: false, calculated: true },
+      { name: "ag_ratio", label: "A/G Ratio", unit: "", required: false, calculated: true },
+    ],
+    calculate: values => {
+      const indirect_bilirubin = values.total_bilirubin && values.direct_bilirubin ? (parseFloat(values.total_bilirubin) - parseFloat(values.direct_bilirubin)).toFixed(2) : '';
+      const globulin = values.total_protein && values.albumin ? (parseFloat(values.total_protein) - parseFloat(values.albumin)).toFixed(2) : '';
+      const ag_ratio = values.albumin && globulin && parseFloat(globulin) !== 0 ? (parseFloat(values.albumin) / parseFloat(globulin)).toFixed(2) : '';
+      return { ...values, indirect_bilirubin, globulin, ag_ratio };
+    },
+  },
+  // Add KFT, Lipid, Thyroid panels here next
+};
+
 export function ActiveTests() {
   const [expandedBookings, setExpandedBookings] = useState<Record<number, boolean>>({});
-  const [cbcModal, setCbcModal] = useState<{ open: boolean; bookingId?: number }>({ open: false });
-  const [cbcForm, setCbcForm] = useState({ hemoglobin: '', hematocrit: '', rbc: '', wbc: '', platelet: '' });
+  const [resultModal, setResultModal] = useState<{ open: boolean; bookingId?: number; testType?: string }>({ open: false });
+  const [resultForm, setResultForm] = useState<any>({});
   const { toast } = useToast();
   
   const { data: bookings, isLoading, refetch } = useQuery<BookingWithDetails[]>({
@@ -43,8 +78,8 @@ export function ActiveTests() {
     },
     onSuccess: () => {
       toast({ title: "CBC result saved" });
-      setCbcModal({ open: false });
-      setCbcForm({ hemoglobin: '', hematocrit: '', rbc: '', wbc: '', platelet: '' });
+      setResultModal({ open: false });
+      setResultForm({});
       refetch();
     },
     onError: (error: any) => {
@@ -106,6 +141,14 @@ export function ActiveTests() {
       return { status, completed, current, statusDate };
     });
   };
+
+  // Helper to get panel config for a test
+  const getPanel = (testName: string) => {
+    if (testName.toLowerCase().includes("cbc")) return TEST_PANELS.CBC;
+    if (testName.toLowerCase().includes("lft")) return TEST_PANELS.LFT;
+    // Add more panels here
+    return null;
+  };
   
   return (
     <Card className="mb-8">
@@ -113,43 +156,57 @@ export function ActiveTests() {
         <CardTitle>Active Tests</CardTitle>
       </CardHeader>
       <CardContent>
-        {/* CBC Modal */}
-        {cbcModal.open && (
-          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg w-full max-w-md">
-              <h2 className="text-lg font-bold mb-4">Enter CBC Result</h2>
-              <form
-                onSubmit={e => {
-                  e.preventDefault();
-                  if (!cbcModal.bookingId) return;
-                  cbcMutation.mutate({
-                    bookingId: cbcModal.bookingId,
-                    values: {
-                      hemoglobin: Number(cbcForm.hemoglobin),
-                      hematocrit: Number(cbcForm.hematocrit),
-                      rbc: Number(cbcForm.rbc),
-                      wbc: Number(cbcForm.wbc),
-                      platelet: Number(cbcForm.platelet),
-                    },
-                  });
-                }}
-                className="space-y-3"
-              >
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="number" step="0.01" required placeholder="Hemoglobin (g/dL)" className="input input-bordered" value={cbcForm.hemoglobin} onChange={e => setCbcForm(f => ({ ...f, hemoglobin: e.target.value }))} />
-                  <input type="number" step="0.01" required placeholder="Hematocrit (%)" className="input input-bordered" value={cbcForm.hematocrit} onChange={e => setCbcForm(f => ({ ...f, hematocrit: e.target.value }))} />
-                  <input type="number" step="0.01" required placeholder="RBC (million/uL)" className="input input-bordered" value={cbcForm.rbc} onChange={e => setCbcForm(f => ({ ...f, rbc: e.target.value }))} />
-                  <input type="number" step="0.01" required placeholder="WBC (thousand/uL)" className="input input-bordered" value={cbcForm.wbc} onChange={e => setCbcForm(f => ({ ...f, wbc: e.target.value }))} />
-                  <input type="number" step="0.01" required placeholder="Platelet (thousand/uL)" className="input input-bordered" value={cbcForm.platelet} onChange={e => setCbcForm(f => ({ ...f, platelet: e.target.value }))} />
-                </div>
-                <div className="flex gap-2 justify-end mt-4">
-                  <Button type="button" variant="outline" onClick={() => setCbcModal({ open: false })}>Cancel</Button>
-                  <Button type="submit" disabled={cbcMutation.isPending}>{cbcMutation.isPending ? "Saving..." : "Save Result"}</Button>
-                </div>
-              </form>
+        {/* Result Modal */}
+        {resultModal.open && (() => {
+          const panel = getPanel(bookings.find(b => b.id === resultModal.bookingId)?.test?.name || "");
+          if (!panel) return null;
+          const calculated = panel.calculate(resultForm);
+          return (
+            <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg w-full max-w-md">
+                <h2 className="text-lg font-bold mb-4">Enter {bookings.find(b => b.id === resultModal.bookingId)?.test?.name} Result</h2>
+                <form
+                  onSubmit={e => {
+                    e.preventDefault();
+                    if (!resultModal.bookingId) return;
+                    // Save all fields (including calculated)
+                    // TODO: Use correct API endpoint for each test type
+                    cbcMutation.mutate({
+                      bookingId: resultModal.bookingId,
+                      values: calculated,
+                    });
+                  }}
+                  className="space-y-3"
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    {panel.fields.map(field => (
+                      <div key={field.name} className="flex flex-col">
+                        <label className="text-xs font-medium mb-1">{field.label}</label>
+                        {field.calculated ? (
+                          <input type="text" readOnly className="input input-bordered bg-gray-100" value={calculated[field.name] || ''} />
+                        ) : (
+                          <input
+                            type="number"
+                            step="0.01"
+                            required={field.required}
+                            placeholder={field.label}
+                            className="input input-bordered"
+                            value={resultForm[field.name] || ''}
+                            onChange={e => setResultForm((f: any) => ({ ...f, [field.name]: e.target.value }))}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 justify-end mt-4">
+                    <Button type="button" variant="outline" onClick={() => setResultModal({ open: false })}>Cancel</Button>
+                    <Button type="submit" disabled={cbcMutation.isPending}>{cbcMutation.isPending ? "Saving..." : "Save Result"}</Button>
+                  </div>
+                </form>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         {isLoading ? (
           <div className="space-y-4">
             <Skeleton className="h-32 w-full" />
@@ -170,20 +227,20 @@ export function ActiveTests() {
                 </div>
                 <div className="mt-2 md:mt-0 flex gap-2 items-center">
                   <StatusBadge status={booking.status} />
-                  {/* CBC Result Entry Button */}
+                  {/* Result Entry Button */}
                   {(() => {
                     // Debug log
                     console.log('Booking status:', booking.status, 'Test name:', booking.test?.name);
-                    const isCBC = booking.test?.name?.toLowerCase().includes("cbc");
+                    const panel = getPanel(booking.test?.name || "");
                     const statusStr = (booking.status || "").toLowerCase();
                     const canEnterResult =
-                      isCBC &&
+                      panel &&
                       (statusStr === "analyzing" ||
                        statusStr === "analysis in progress" ||
                        statusStr === "completed");
                     return canEnterResult ? (
-                      <Button size="sm" variant="secondary" onClick={() => setCbcModal({ open: true, bookingId: booking.id })}>
-                        Enter CBC Result
+                      <Button size="sm" variant="secondary" onClick={() => setResultModal({ open: true, bookingId: booking.id, testType: booking.test?.name })}>
+                        Enter Result
                       </Button>
                     ) : null;
                   })()}
