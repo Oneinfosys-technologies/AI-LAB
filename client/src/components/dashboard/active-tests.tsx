@@ -169,11 +169,16 @@ export function ActiveTests() {
                   onSubmit={e => {
                     e.preventDefault();
                     if (!resultModal.bookingId) return;
-                    // Save all fields (including calculated)
-                    // TODO: Use correct API endpoint for each test type
+                    // Convert all non-calculated fields to numbers
+                    const payload = { ...calculated };
+                    panel.fields.forEach(field => {
+                      if (!field.calculated && payload[field.name] !== undefined && payload[field.name] !== '') {
+                        payload[field.name] = Number(payload[field.name]);
+                      }
+                    });
                     cbcMutation.mutate({
                       bookingId: resultModal.bookingId,
-                      values: calculated,
+                      values: payload,
                     });
                   }}
                   className="space-y-3"
