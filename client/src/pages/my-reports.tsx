@@ -13,7 +13,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Eye, Download, Search, FileText, Loader2 } from "lucide-react";
+import { Eye, Download, Search, FileText, Loader2, Printer } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -97,16 +97,19 @@ export default function MyReports() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
-                            <Button size="sm" variant="outline" asChild>
+                            <Button variant="ghost" size="icon" asChild>
                               <Link href={`/reports/${report.id}`}>
-                                <Eye className="h-4 w-4 mr-1" />
-                                View
+                                <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
-                            <Button size="sm" asChild>
+                            <Button variant="ghost" size="icon" asChild>
                               <Link href={`/reports/download/${report.reportId}`}>
-                                <Download className="h-4 w-4 mr-1" />
-                                Download
+                                <Download className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button variant="ghost" size="icon" asChild>
+                              <Link href={`/reports/print/${report.reportId}`}>
+                                <Printer className="h-4 w-4" />
                               </Link>
                             </Button>
                           </div>
