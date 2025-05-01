@@ -58,11 +58,6 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
       icon: <TestTube className="mr-3 h-5 w-5" />,
     },
     {
-      name: "Test Results",
-      path: "/test-result-entry",
-      icon: <FileText className="mr-3 h-5 w-5" />,
-    },
-    {
       name: "CBC Calculator",
       path: "/cbc-calculator",
       icon: <Activity className="mr-3 h-5 w-5" />,
@@ -112,6 +107,11 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
       name: "Test Management",
       path: "/admin/tests",
       icon: <TestTube className="mr-3 h-5 w-5" />,
+    },
+    {
+      name: "Test Results Entry",
+      path: "/admin/test-result-entry",
+      icon: <FileText className="mr-3 h-5 w-5" />,
     },
     {
       name: "Reporting",
