@@ -10,7 +10,8 @@ import {
   User,
   Menu,
   Bell,
-  X
+  X,
+  Activity
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,18 @@ export function MobileNav({ className }: MobileNavProps) {
       label: "Tests",
       path: "/book-test",
       icon: <TestTube className="text-xl mb-1" />,
+    },
+    {
+      id: "results",
+      label: "Results",
+      path: "/test-result-entry",
+      icon: <FileText className="text-xl mb-1" />,
+    },
+    {
+      id: "cbc",
+      label: "CBC Calc",
+      path: "/cbc-calculator",
+      icon: <Activity className="text-xl mb-1" />,
     },
     {
       id: "reports",
