@@ -169,7 +169,6 @@ export function ActiveTests() {
                   onSubmit={e => {
                     e.preventDefault();
                     if (!resultModal.bookingId) return;
-                    // Convert all non-calculated fields to numbers
                     const payload = { ...calculated };
                     panel.fields.forEach(field => {
                       if (!field.calculated && payload[field.name] !== undefined && payload[field.name] !== '') {
