@@ -557,19 +557,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/bookings/:id/cbc-result", isAdmin, async (req, res) => {
     try {
       const bookingId = parseInt(req.params.id);
-      const { hemoglobin, hematocrit, rbc, wbc, platelet } = req.body;
-      if (
-        typeof hemoglobin !== "number" ||
-        typeof hematocrit !== "number" ||
-        typeof rbc !== "number" ||
-        typeof wbc !== "number" ||
-        typeof platelet !== "number"
-      ) {
+      const {
+        hemoglobin, hematocrit, rbcCount, wbcCount, plateletCount,
+        neutrophils, lymphocytes, eosinophils, monocytes, basophils
+      } = req.body;
+      const fields = [hemoglobin, hematocrit, rbcCount, wbcCount, plateletCount, neutrophils, lymphocytes, eosinophils, monocytes, basophils];
+      if (fields.some(v => typeof v !== "number" || isNaN(v))) {
         return res.status(400).json({ message: "All CBC values are required and must be numbers." });
       }
-      // Calculate derived values
-      const cbcResult = calculateCBC({ hemoglobin, hematocrit, rbc, wbc, platelet });
-      // Save result in report (assume InsertReport type and storage.createReport exist)
+      // Save all values in results
+      const cbcResult = {
+        hemoglobin, hematocrit, rbcCount, wbcCount, plateletCount,
+        neutrophils, lymphocytes, eosinophils, monocytes, basophils
+      };
       const report = await storage.createReport({
         bookingId,
         testType: "CBC",
