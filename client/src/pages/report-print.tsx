@@ -18,7 +18,7 @@ export default function ReportPrintPage() {
     return <div className="max-w-2xl mx-auto py-16 text-center text-lg">Report not found</div>;
   }
 
-  // Parse CBC and patient info from report
+  // Parse results and patient info from report
   let results = report.results;
   if (typeof results === "string") {
     try {
@@ -27,22 +27,6 @@ export default function ReportPrintPage() {
       results = {};
     }
   }
-  const cbc = {
-    hemoglobin: results?.hemoglobin,
-    totalLeukocyteCount: results?.totalLeukocyteCount,
-    neutrophils: results?.neutrophils,
-    lymphocytes: results?.lymphocytes,
-    eosinophils: results?.eosinophils,
-    monocytes: results?.monocytes,
-    basophils: results?.basophils,
-    rbcCount: results?.rbcCount,
-    pcv: results?.pcv,
-    mcv: results?.mcv,
-    mch: results?.mch,
-    mchc: results?.mchc,
-    rdwCv: results?.rdwCv,
-    plateletCount: results?.plateletCount,
-  };
   const patient = {
     name: report.user?.fullName || "N/A",
     age: report.user?.age || "N/A",
@@ -52,6 +36,8 @@ export default function ReportPrintPage() {
     sNo: report.booking?.bookingId || "N/A",
     date: report.generatedDate ? new Date(report.generatedDate).toLocaleDateString() : "N/A",
   };
+  const testType = report.test?.panel || report.test?.name || "CBC";
+  const comments = report.insights || report.comments || "";
 
-  return <ReportPrint patient={patient} cbc={cbc} />;
+  return <ReportPrint patient={patient} results={results} testType={testType} comments={comments} />;
 } 

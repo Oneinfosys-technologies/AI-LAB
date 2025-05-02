@@ -3,23 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/common/logo";
 import html2pdf from "html2pdf.js";
 
-interface CBCResult {
-  hemoglobin?: string | number;
-  totalLeukocyteCount?: string | number;
-  neutrophils?: string | number;
-  lymphocytes?: string | number;
-  eosinophils?: string | number;
-  monocytes?: string | number;
-  basophils?: string | number;
-  rbcCount?: string | number;
-  pcv?: string | number;
-  mcv?: string | number;
-  mch?: string | number;
-  mchc?: string | number;
-  rdwCv?: string | number;
-  plateletCount?: string | number;
-}
-
 interface PatientInfo {
   name: string;
   age: string;
@@ -30,13 +13,98 @@ interface PatientInfo {
   date: string;
 }
 
-interface ReportPrintProps {
-  patient: PatientInfo;
-  cbc: CBCResult;
+interface TestPanelField {
+  name: string;
+  label: string;
+  unit: string;
+  refLow: number;
+  refHigh: number;
 }
 
-export const ReportPrint: React.FC<ReportPrintProps> = ({ patient, cbc }) => {
+interface ReportPrintProps {
+  patient: PatientInfo;
+  results: Record<string, any>;
+  testType: string;
+  comments?: string;
+}
+
+const TEST_PANELS: Record<string, { fields: TestPanelField[]; title: string }> = {
+  CBC: {
+    title: "CBC PROFILE",
+    fields: [
+      { name: "hemoglobin", label: "Hemoglobin", unit: "gm%", refLow: 11, refHigh: 17 },
+      { name: "totalLeukocyteCount", label: "Total Leucocyte Count", unit: "/Cu mm", refLow: 4000, refHigh: 11000 },
+      { name: "neutrophils", label: "Neutrophils", unit: "%", refLow: 40, refHigh: 70 },
+      { name: "lymphocytes", label: "Lymphocytes", unit: "%", refLow: 20, refHigh: 40 },
+      { name: "eosinophils", label: "Eosinophils", unit: "%", refLow: 1, refHigh: 6 },
+      { name: "monocytes", label: "Monocytes", unit: "%", refLow: 1, refHigh: 10 },
+      { name: "basophils", label: "Basophils", unit: "%", refLow: 0, refHigh: 1 },
+      { name: "rbcCount", label: "RBC Count", unit: "Million/cu mm", refLow: 4.5, refHigh: 6.5 },
+      { name: "pcv", label: "P.C.V./Hematocrit Value", unit: "%", refLow: 40, refHigh: 50 },
+      { name: "mcv", label: "M.C.V.", unit: "fl", refLow: 76, refHigh: 96 },
+      { name: "mch", label: "M.C.H.", unit: "pg", refLow: 27, refHigh: 32 },
+      { name: "mchc", label: "M.C.H.C.", unit: "%", refLow: 32, refHigh: 36 },
+      { name: "rdwCv", label: "R.D.W. - CV", unit: "%", refLow: 11, refHigh: 16.5 },
+      { name: "plateletCount", label: "Platelet Count", unit: "Lacs/cu mm", refLow: 1.5, refHigh: 4.5 },
+    ],
+  },
+  LIPID: {
+    title: "LIPID PROFILE",
+    fields: [
+      { name: "total_cholesterol", label: "Total Cholesterol", unit: "mg/dl", refLow: 0, refHigh: 200 },
+      { name: "hdl", label: "HDL Cholesterol", unit: "mg/dl", refLow: 40, refHigh: 100 },
+      { name: "ldl", label: "LDL Cholesterol", unit: "mg/dl", refLow: 0, refHigh: 100 },
+      { name: "triglycerides", label: "Triglycerides", unit: "mg/dl", refLow: 0, refHigh: 150 },
+      { name: "vldl", label: "VLDL Cholesterol", unit: "mg/dl", refLow: 5, refHigh: 40 },
+    ],
+  },
+  HBA1C: {
+    title: "HbA1c",
+    fields: [
+      { name: "hba1c", label: "HbA1c", unit: "%", refLow: 4.0, refHigh: 5.6 },
+    ],
+  },
+  THYROID: {
+    title: "THYROID PROFILE",
+    fields: [
+      { name: "tsh", label: "TSH", unit: "µIU/mL", refLow: 0.4, refHigh: 4.0 },
+      { name: "t3", label: "T3", unit: "ng/dL", refLow: 80, refHigh: 200 },
+      { name: "t4", label: "T4", unit: "µg/dL", refLow: 5.1, refHigh: 14.1 },
+    ],
+  },
+  VITAMIN_D3: {
+    title: "VITAMIN D3",
+    fields: [
+      { name: "vitamin_d3", label: "Vitamin D3", unit: "ng/mL", refLow: 30, refHigh: 100 },
+    ],
+  },
+  VITAMIN_B12: {
+    title: "VITAMIN B12",
+    fields: [
+      { name: "vitamin_b12", label: "Vitamin B12", unit: "pg/mL", refLow: 200, refHigh: 900 },
+    ],
+  },
+  CRP: {
+    title: "CRP (C-Reactive Protein)",
+    fields: [
+      { name: "crp", label: "CRP", unit: "mg/L", refLow: 0, refHigh: 5 },
+    ],
+  },
+};
+
+function getFlag(value: any, refLow: number, refHigh: number) {
+  if (value === undefined || value === null || value === "") return { flag: "", color: "" };
+  const num = Number(value);
+  if (isNaN(num)) return { flag: "", color: "" };
+  if (num < refLow) return { flag: "L", color: "#2563eb" }; // blue
+  if (num > refHigh) return { flag: "H", color: "#dc2626" }; // red
+  return { flag: "", color: "" };
+}
+
+export const ReportPrint: React.FC<ReportPrintProps> = ({ patient, results, testType, comments }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const panelKey = Object.keys(TEST_PANELS).find(key => testType.toLowerCase().includes(key.toLowerCase())) || "CBC";
+  const panel = TEST_PANELS[panelKey];
 
   const handlePrint = () => {
     window.print();
@@ -60,7 +128,7 @@ export const ReportPrint: React.FC<ReportPrintProps> = ({ patient, cbc }) => {
             <div>S. No.: {patient.sNo}</div>
           </div>
         </div>
-        <div className="mb-2 text-center font-bold text-lg tracking-wide">CBC PROFILE</div>
+        <div className="mb-2 text-center font-bold text-lg tracking-wide">{panel.title}</div>
         <div className="mb-4 grid grid-cols-2 gap-2 text-xs">
           <div>Patient's Name: <span className="font-semibold">{patient.name}</span></div>
           <div>Age/Sex: <span className="font-semibold">{patient.age} / {patient.sex}</span></div>
@@ -77,95 +145,26 @@ export const ReportPrint: React.FC<ReportPrintProps> = ({ patient, cbc }) => {
             </tr>
           </thead>
           <tbody>
-            <tr><td className="border border-black p-1" colSpan={4}><b>HAEMATOLOGY</b></td></tr>
-            <tr>
-              <td className="border border-black p-1">HAEMOGLOBIN</td>
-              <td className="border border-black p-1">{cbc.hemoglobin}</td>
-              <td className="border border-black p-1">gm%</td>
-              <td className="border border-black p-1">11-17</td>
-            </tr>
-            <tr>
-              <td className="border border-black p-1">TOTAL LEUCOCYTE COUNT</td>
-              <td className="border border-black p-1">{cbc.totalLeukocyteCount}</td>
-              <td className="border border-black p-1">/Cu mm</td>
-              <td className="border border-black p-1">4000-11000</td>
-            </tr>
-            <tr><td className="border border-black p-1" colSpan={4}><b>DIFFERENTIAL LEUCOCYTE COUNT</b></td></tr>
-            <tr>
-              <td className="border border-black p-1">Neutrophils</td>
-              <td className="border border-black p-1">{cbc.neutrophils}</td>
-              <td className="border border-black p-1">%</td>
-              <td className="border border-black p-1">40-70</td>
-            </tr>
-            <tr>
-              <td className="border border-black p-1">Lymphocytes</td>
-              <td className="border border-black p-1">{cbc.lymphocytes}</td>
-              <td className="border border-black p-1">%</td>
-              <td className="border border-black p-1">20-40</td>
-            </tr>
-            <tr>
-              <td className="border border-black p-1">Eosinophils</td>
-              <td className="border border-black p-1">{cbc.eosinophils}</td>
-              <td className="border border-black p-1">%</td>
-              <td className="border border-black p-1">1-6</td>
-            </tr>
-            <tr>
-              <td className="border border-black p-1">Monocytes</td>
-              <td className="border border-black p-1">{cbc.monocytes}</td>
-              <td className="border border-black p-1">%</td>
-              <td className="border border-black p-1">1-10</td>
-            </tr>
-            <tr>
-              <td className="border border-black p-1">Basophils</td>
-              <td className="border border-black p-1">{cbc.basophils}</td>
-              <td className="border border-black p-1">%</td>
-              <td className="border border-black p-1">0-1</td>
-            </tr>
-            <tr><td className="border border-black p-1" colSpan={4}><b>TOTAL R.B.C. COUNT</b></td></tr>
-            <tr>
-              <td className="border border-black p-1">RBC Count</td>
-              <td className="border border-black p-1">{cbc.rbcCount}</td>
-              <td className="border border-black p-1">Million/cu mm</td>
-              <td className="border border-black p-1">4.5-6.5</td>
-            </tr>
-            <tr>
-              <td className="border border-black p-1">P.C.V./Hematocrit Value</td>
-              <td className="border border-black p-1">{cbc.pcv}</td>
-              <td className="border border-black p-1">%</td>
-              <td className="border border-black p-1">40-50</td>
-            </tr>
-            <tr>
-              <td className="border border-black p-1">M.C.V. (Mean Corpuscular Volume)</td>
-              <td className="border border-black p-1">{cbc.mcv}</td>
-              <td className="border border-black p-1">fl</td>
-              <td className="border border-black p-1">76-96</td>
-            </tr>
-            <tr>
-              <td className="border border-black p-1">M.C.H. (Mean Corpuscular Hemoglobin)</td>
-              <td className="border border-black p-1">{cbc.mch}</td>
-              <td className="border border-black p-1">pg</td>
-              <td className="border border-black p-1">27-32</td>
-            </tr>
-            <tr>
-              <td className="border border-black p-1">M.C.H.C. (Mean Corpuscular Hemoglobin Concentration)</td>
-              <td className="border border-black p-1">{cbc.mchc}</td>
-              <td className="border border-black p-1">%</td>
-              <td className="border border-black p-1">32-36</td>
-            </tr>
-            <tr>
-              <td className="border border-black p-1">R.D.W. - CV</td>
-              <td className="border border-black p-1">{cbc.rdwCv}</td>
-              <td className="border border-black p-1">%</td>
-              <td className="border border-black p-1">11.0-16.5</td>
-            </tr>
-            <tr>
-              <td className="border border-black p-1">PLATELET COUNT</td>
-              <td className="border border-black p-1">{cbc.plateletCount}</td>
-              <td className="border border-black p-1">Lacs/cu mm</td>
-              <td className="border border-black p-1">1.5-4.5</td>
-            </tr>
+            {panel.fields.map(field => {
+              const value = results[field.name];
+              const { flag, color } = getFlag(value, field.refLow, field.refHigh);
+              return (
+                <tr key={field.name}>
+                  <td className="border border-black p-1">{field.label}</td>
+                  <td className="border border-black p-1" style={{ color }}>{value} {flag && <b>({flag})</b>}</td>
+                  <td className="border border-black p-1">{field.unit}</td>
+                  <td className="border border-black p-1">{field.refLow}-{field.refHigh}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
+        {/* Interpretive Comments */}
+        {comments && (
+          <div className="mt-4 p-2 border border-gray-300 bg-gray-50 text-xs">
+            <b>Interpretive Comments:</b> {typeof comments === "string" ? comments : JSON.stringify(comments)}
+          </div>
+        )}
         {/* Footer */}
         <div className="flex justify-between items-end mt-8">
           <div className="text-xs text-gray-600">
