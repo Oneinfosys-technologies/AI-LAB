@@ -124,7 +124,61 @@ const TEST_DEFINITIONS: TestDefinition[] = [
         step: '0.1' 
       }
     ]
-  }
+  },
+  {
+    id: 'lipid_profile',
+    name: 'Lipid Profile',
+    description: 'Measures cholesterol levels including HDL, LDL, and triglycerides',
+    parameters: [
+      { id: 'total_cholesterol', name: 'Total Cholesterol', unit: 'mg/dl', normalRange: '<200', type: 'number', step: '0.1' },
+      { id: 'hdl', name: 'HDL Cholesterol', unit: 'mg/dl', normalRange: '>40', type: 'number', step: '0.1' },
+      { id: 'ldl', name: 'LDL Cholesterol', unit: 'mg/dl', normalRange: '<100', type: 'number', step: '0.1' },
+      { id: 'triglycerides', name: 'Triglycerides', unit: 'mg/dl', normalRange: '<150', type: 'number', step: '0.1' },
+      { id: 'vldl', name: 'VLDL Cholesterol', unit: 'mg/dl', normalRange: '5-40', type: 'number', step: '0.1' },
+    ]
+  },
+  {
+    id: 'hba1c',
+    name: 'HbA1c',
+    description: 'Measures average blood glucose levels over the past 2-3 months',
+    parameters: [
+      { id: 'hba1c', name: 'HbA1c', unit: '%', normalRange: '4.0-5.6', type: 'number', step: '0.1' },
+    ]
+  },
+  {
+    id: 'thyroid_profile',
+    name: 'Thyroid Profile',
+    description: 'Measures thyroid hormone levels including TSH, T3, and T4',
+    parameters: [
+      { id: 'tsh', name: 'TSH', unit: 'µIU/mL', normalRange: '0.4-4.0', type: 'number', step: '0.01' },
+      { id: 't3', name: 'T3', unit: 'ng/dL', normalRange: '80-200', type: 'number', step: '0.1' },
+      { id: 't4', name: 'T4', unit: 'µg/dL', normalRange: '5.1-14.1', type: 'number', step: '0.1' },
+    ]
+  },
+  {
+    id: 'vitamin_d3',
+    name: 'Vitamin D3',
+    description: 'Measures vitamin D levels in the blood',
+    parameters: [
+      { id: 'vitamin_d3', name: 'Vitamin D3', unit: 'ng/mL', normalRange: '30-100', type: 'number', step: '0.1' },
+    ]
+  },
+  {
+    id: 'vitamin_b12',
+    name: 'Vitamin B12',
+    description: 'Measures vitamin B12 levels in the blood',
+    parameters: [
+      { id: 'vitamin_b12', name: 'Vitamin B12', unit: 'pg/mL', normalRange: '200-900', type: 'number', step: '0.1' },
+    ]
+  },
+  {
+    id: 'crp',
+    name: 'CRP (C-Reactive Protein)',
+    description: 'Measures inflammation levels in the body',
+    parameters: [
+      { id: 'crp', name: 'CRP', unit: 'mg/L', normalRange: '<5', type: 'number', step: '0.1' },
+    ]
+  },
 ];
 
 interface TestResultFormProps {

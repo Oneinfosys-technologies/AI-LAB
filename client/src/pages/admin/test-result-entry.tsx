@@ -14,6 +14,12 @@ const TEST_TYPES = [
   { id: 'cbc', name: 'Complete Blood Count (CBC)' },
   { id: 'vidal', name: 'Widal Test' },
   { id: 'blood_sugar', name: 'Blood Sugar' },
+  { id: 'lipid_profile', name: 'Lipid Profile' },
+  { id: 'hba1c', name: 'HbA1c' },
+  { id: 'thyroid_profile', name: 'Thyroid Profile' },
+  { id: 'vitamin_d3', name: 'Vitamin D3' },
+  { id: 'vitamin_b12', name: 'Vitamin B12' },
+  { id: 'crp', name: 'CRP (C-Reactive Protein)' },
 ];
 
 export default function AdminTestResultEntryPage() {

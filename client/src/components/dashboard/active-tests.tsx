@@ -17,7 +17,18 @@ interface BookingWithDetails extends Booking {
 }
 
 // Define test panels and their fields, units, normal ranges, and formulas
-const TEST_PANELS = {
+interface TestPanelField {
+  name: string;
+  label: string;
+  unit: string;
+  required: boolean;
+  calculated?: boolean;
+}
+interface TestPanel {
+  fields: TestPanelField[];
+  calculate: (values: Record<string, any>) => Record<string, any>;
+}
+const TEST_PANELS: Record<string, TestPanel> = {
   CBC: {
     fields: [
       { name: "hemoglobin", label: "Hemoglobin (g/dL)", unit: "g/dL", required: true },
@@ -26,7 +37,7 @@ const TEST_PANELS = {
       { name: "wbc", label: "WBC (thousand/uL)", unit: "thousand/uL", required: true },
       { name: "platelet", label: "Platelet (thousand/uL)", unit: "thousand/uL", required: true },
     ],
-    calculate: values => values, // No calculated fields for now
+    calculate: (values: Record<string, any>) => values, // No calculated fields for now
   },
   LFT: {
     fields: [
@@ -41,14 +52,55 @@ const TEST_PANELS = {
       { name: "globulin", label: "Globulin (g/dL)", unit: "g/dL", required: false, calculated: true },
       { name: "ag_ratio", label: "A/G Ratio", unit: "", required: false, calculated: true },
     ],
-    calculate: values => {
+    calculate: (values: Record<string, any>) => {
       const indirect_bilirubin = values.total_bilirubin && values.direct_bilirubin ? (parseFloat(values.total_bilirubin) - parseFloat(values.direct_bilirubin)).toFixed(2) : '';
       const globulin = values.total_protein && values.albumin ? (parseFloat(values.total_protein) - parseFloat(values.albumin)).toFixed(2) : '';
       const ag_ratio = values.albumin && globulin && parseFloat(globulin) !== 0 ? (parseFloat(values.albumin) / parseFloat(globulin)).toFixed(2) : '';
       return { ...values, indirect_bilirubin, globulin, ag_ratio };
     },
   },
-  // Add KFT, Lipid, Thyroid panels here next
+  LIPID: {
+    fields: [
+      { name: "total_cholesterol", label: "Total Cholesterol (mg/dl)", unit: "mg/dl", required: true },
+      { name: "hdl", label: "HDL Cholesterol (mg/dl)", unit: "mg/dl", required: true },
+      { name: "ldl", label: "LDL Cholesterol (mg/dl)", unit: "mg/dl", required: true },
+      { name: "triglycerides", label: "Triglycerides (mg/dl)", unit: "mg/dl", required: true },
+      { name: "vldl", label: "VLDL Cholesterol (mg/dl)", unit: "mg/dl", required: false },
+    ],
+    calculate: (values: Record<string, any>) => values,
+  },
+  HBA1C: {
+    fields: [
+      { name: "hba1c", label: "HbA1c (%)", unit: "%", required: true },
+    ],
+    calculate: (values: Record<string, any>) => values,
+  },
+  THYROID: {
+    fields: [
+      { name: "tsh", label: "TSH (µIU/mL)", unit: "µIU/mL", required: true },
+      { name: "t3", label: "T3 (ng/dL)", unit: "ng/dL", required: true },
+      { name: "t4", label: "T4 (µg/dL)", unit: "µg/dL", required: true },
+    ],
+    calculate: (values: Record<string, any>) => values,
+  },
+  VITAMIN_D3: {
+    fields: [
+      { name: "vitamin_d3", label: "Vitamin D3 (ng/mL)", unit: "ng/mL", required: true },
+    ],
+    calculate: (values: Record<string, any>) => values,
+  },
+  VITAMIN_B12: {
+    fields: [
+      { name: "vitamin_b12", label: "Vitamin B12 (pg/mL)", unit: "pg/mL", required: true },
+    ],
+    calculate: (values: Record<string, any>) => values,
+  },
+  CRP: {
+    fields: [
+      { name: "crp", label: "CRP (mg/L)", unit: "mg/L", required: true },
+    ],
+    calculate: (values: Record<string, any>) => values,
+  },
 };
 
 export function ActiveTests() {
@@ -146,7 +198,12 @@ export function ActiveTests() {
   const getPanel = (testName: string) => {
     if (testName.toLowerCase().includes("cbc")) return TEST_PANELS.CBC;
     if (testName.toLowerCase().includes("lft")) return TEST_PANELS.LFT;
-    // Add more panels here
+    if (testName.toLowerCase().includes("lipid")) return TEST_PANELS.LIPID;
+    if (testName.toLowerCase().includes("hba1c")) return TEST_PANELS.HBA1C;
+    if (testName.toLowerCase().includes("thyroid")) return TEST_PANELS.THYROID;
+    if (testName.toLowerCase().includes("vitamin d3")) return TEST_PANELS.VITAMIN_D3;
+    if (testName.toLowerCase().includes("vitamin b12")) return TEST_PANELS.VITAMIN_B12;
+    if (testName.toLowerCase().includes("crp")) return TEST_PANELS.CRP;
     return null;
   };
   
@@ -158,13 +215,13 @@ export function ActiveTests() {
       <CardContent>
         {/* Result Modal */}
         {resultModal.open && (() => {
-          const panel = getPanel(bookings.find(b => b.id === resultModal.bookingId)?.test?.name || "");
+          const panel = getPanel(bookings?.find(b => b.id === resultModal.bookingId)?.test?.name || "");
           if (!panel) return null;
           const calculated = panel.calculate(resultForm);
           return (
             <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
               <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg w-full max-w-md">
-                <h2 className="text-lg font-bold mb-4">Enter {bookings.find(b => b.id === resultModal.bookingId)?.test?.name} Result</h2>
+                <h2 className="text-lg font-bold mb-4">Enter {bookings?.find(b => b.id === resultModal.bookingId)?.test?.name} Result</h2>
                 <form
                   onSubmit={e => {
                     e.preventDefault();
@@ -302,7 +359,7 @@ export function ActiveTests() {
                             </p>
                             {canMark && (
                               <Button
-                                size="xs"
+                                size="sm"
                                 variant="outline"
                                 className="mt-2"
                                 disabled={statusMutation.isPending}
