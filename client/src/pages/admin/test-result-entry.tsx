@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
+import { useAuth } from '@/hooks/use-auth';
 
 const TEST_TYPES = [
   { id: 'cbc', name: 'Complete Blood Count (CBC)' },
@@ -16,9 +17,12 @@ const TEST_TYPES = [
 ];
 
 export default function AdminTestResultEntryPage() {
+  const { user, isLoading } = useAuth();
   const [selectedTest, setSelectedTest] = useState<string>('');
   const [patientId, setPatientId] = useState<string>('');
   const [patientInfo, setPatientInfo] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const handleTestSelect = (testId: string) => {
     setSelectedTest(testId);
@@ -36,22 +40,45 @@ export default function AdminTestResultEntryPage() {
     });
   };
 
-  const handleResultSubmit = (values: Record<string, string>) => {
-    const testResult = {
-      patientId,
-      patientInfo,
-      testType: selectedTest,
-      results: values,
-      timestamp: new Date().toISOString(),
-      enteredBy: 'Current Admin User' // You would get this from your auth context
-    };
-    console.log('Test Results:', testResult);
-    // Here you would typically save the results to your backend
+  const handleResultSubmit = async (values: Record<string, string>) => {
+    setError(null);
+    setSuccess(null);
+    try {
+      // You would typically get the bookingId from patientInfo or a search result
+      const bookingId = patientInfo?.id;
+      if (!bookingId) {
+        setError('No booking/patient selected.');
+        return;
+      }
+      const response = await fetch('/api/admin/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId,
+          results: values,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.message || 'Failed to save test results.');
+        return;
+      }
+      setSuccess('Test results saved successfully!');
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred.');
+    }
   };
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!user || (user.role !== 'admin' && user.role !== 'superadmin')) {
+    return <div className="text-red-600 font-bold text-center py-10">Access Denied: Admins only</div>;
+  }
 
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-2xl font-bold mb-6">Test Result Entry (Admin)</h1>
+      {error && <div className="mb-4 text-red-600 font-semibold">{error}</div>}
+      {success && <div className="mb-4 text-green-600 font-semibold">{success}</div>}
       
       <div className="grid gap-6 mb-6">
         <Card>
