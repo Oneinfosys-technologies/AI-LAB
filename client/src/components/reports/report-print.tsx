@@ -92,30 +92,87 @@ const TEST_PANELS: Record<string, { fields: TestPanelField[]; title: string }> =
   },
 };
 
-function getFlag(value: any, refLow: number, refHigh: number) {
-  if (value === undefined || value === null || value === "") return { flag: "", color: "" };
+const CBC_DIRECT_FIELDS: TestPanelField[] = [
+  { name: "hemoglobin", label: "Hemoglobin (Hgb)", unit: "g/dL", refLow: 11, refHigh: 17 },
+  { name: "hematocrit", label: "Hematocrit (Hct)", unit: "%", refLow: 36, refHigh: 50 },
+  { name: "rbcCount", label: "RBC Count", unit: "million/µL", refLow: 4.5, refHigh: 6.5 },
+  { name: "wbcCount", label: "WBC Count (TLC)", unit: "×10³/µL", refLow: 4, refHigh: 11 },
+  { name: "plateletCount", label: "Platelet Count (PLC)", unit: "×10³/µL", refLow: 150, refHigh: 450 },
+  { name: "neutrophils", label: "Neutrophils (%)", unit: "%", refLow: 40, refHigh: 70 },
+  { name: "lymphocytes", label: "Lymphocytes (%)", unit: "%", refLow: 20, refHigh: 40 },
+  { name: "eosinophils", label: "Eosinophils (%)", unit: "%", refLow: 1, refHigh: 6 },
+  { name: "monocytes", label: "Monocytes (%)", unit: "%", refLow: 1, refHigh: 10 },
+  { name: "basophils", label: "Basophils (%)", unit: "%", refLow: 0, refHigh: 1 },
+];
+
+const CBC_CALC_FIELDS = [
+  { name: "mcv", label: "MCV (Mean Corpuscular Volume)", unit: "fL", refLow: 80, refHigh: 100 },
+  { name: "mch", label: "MCH (Mean Corpuscular Hemoglobin)", unit: "pg", refLow: 27, refHigh: 32 },
+  { name: "mchc", label: "MCHC (Mean Corpuscular Hemoglobin Concentration)", unit: "g/dL", refLow: 32, refHigh: 36 },
+  { name: "anc", label: "ANC (Absolute Neutrophil Count)", unit: "×10³/µL", refLow: 1.5, refHigh: 8 },
+];
+
+function validateDirectValue(value: any, field: TestPanelField) {
+  if (value === undefined || value === null || value === "") return { valid: false, error: "Missing" };
   const num = Number(value);
-  if (isNaN(num)) return { flag: "", color: "" };
-  if (num < refLow) return { flag: "L", color: "#2563eb" }; // blue
-  if (num > refHigh) return { flag: "H", color: "#dc2626" }; // red
-  return { flag: "", color: "" };
+  if (isNaN(num) || num <= 0) return { valid: false, error: "Invalid (≤0)" };
+  return { valid: true, error: "" };
+}
+
+function getFlagWithInterpretation(value: any, refLow: number, refHigh: number, label: string) {
+  if (value === undefined || value === null || value === "") return { flag: "", color: "", interp: "" };
+  const num = Number(value);
+  if (isNaN(num)) return { flag: "", color: "", interp: "" };
+  if (num < refLow) return { flag: "L", color: "#2563eb", interp: label === "MCV (Mean Corpuscular Volume)" ? "Microcytic" : "Low" };
+  if (num > refHigh) return { flag: "H", color: "#dc2626", interp: label === "MCV (Mean Corpuscular Volume)" ? "Macrocytic" : "High" };
+  return { flag: "", color: "", interp: "Normal" };
+}
+
+function calculateCBC(results: Record<string, any>) {
+  const hct = Number(results.hematocrit);
+  const rbc = Number(results.rbcCount);
+  const hgb = Number(results.hemoglobin);
+  const wbc = Number(results.wbcCount);
+  const neutro = Number(results.neutrophils);
+  let mcv = "", mch = "", mchc = "", anc = "";
+  let errors: string[] = [];
+  if (rbc > 0) {
+    mcv = ((hct / rbc) * 10).toFixed(1);
+    mch = ((hgb / rbc) * 10).toFixed(1);
+  } else {
+    errors.push("RBC must be > 0 for MCV/MCH");
+  }
+  if (hct > 0) {
+    mchc = ((hgb / hct) * 100).toFixed(1);
+  } else {
+    errors.push("Hct must be > 0 for MCHC");
+  }
+  if (wbc > 0) {
+    anc = (wbc * (neutro / 100)).toFixed(1);
+  } else {
+    errors.push("WBC must be > 0 for ANC");
+  }
+  return { mcv, mch, mchc, anc, errors };
+}
+
+function cbcInterpretation(results: Record<string, any>, calc: any) {
+  const mcv = Number(calc.mcv);
+  const mch = Number(calc.mch);
+  if (mcv < 80 && mch < 27) return "Iron deficiency anemia suspected.";
+  if (mcv > 100) return "Macrocytic anemia pattern.";
+  if (Number(results.hemoglobin) < 11) return "Anemia (low hemoglobin).";
+  return "CBC within normal limits.";
 }
 
 export const ReportPrint: React.FC<ReportPrintProps> = ({ patient, results, testType, comments }) => {
   const printRef = useRef<HTMLDivElement>(null);
-  const panelKey = Object.keys(TEST_PANELS).find(key => testType.toLowerCase().includes(key.toLowerCase())) || "CBC";
-  const panel = TEST_PANELS[panelKey];
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleDownloadPDF = () => {
-    if (printRef.current) {
-      html2pdf().from(printRef.current).save();
-    }
-  };
-
+  const isCBC = testType.toLowerCase().includes("cbc");
+  let calc = { mcv: "", mch: "", mchc: "", anc: "", errors: [] as string[] };
+  if (isCBC) {
+    calc = calculateCBC(results);
+  }
+  const handlePrint = () => { window.print(); };
+  const handleDownloadPDF = () => { if (printRef.current) { html2pdf().from(printRef.current).save(); } };
   return (
     <div className="report-print-wrapper">
       <div ref={printRef} className="report-print bg-white p-8 max-w-2xl mx-auto border border-gray-300 shadow print:shadow-none print:border-none print:p-0">
@@ -128,13 +185,14 @@ export const ReportPrint: React.FC<ReportPrintProps> = ({ patient, results, test
             <div>S. No.: {patient.sNo}</div>
           </div>
         </div>
-        <div className="mb-2 text-center font-bold text-lg tracking-wide">{panel.title}</div>
+        <div className="mb-2 text-center font-bold text-lg tracking-wide">CBC PROFILE</div>
         <div className="mb-4 grid grid-cols-2 gap-2 text-xs">
           <div>Patient's Name: <span className="font-semibold">{patient.name}</span></div>
           <div>Age/Sex: <span className="font-semibold">{patient.age} / {patient.sex}</span></div>
           <div>Referred by: <span className="font-semibold">{patient.refBy}</span></div>
         </div>
-        {/* Table */}
+        {/* Directly Measured Section */}
+        <div className="font-semibold mt-4 mb-1">Directly Measured:</div>
         <table className="w-full text-xs border border-black mb-4">
           <thead>
             <tr className="bg-gray-100">
@@ -145,13 +203,14 @@ export const ReportPrint: React.FC<ReportPrintProps> = ({ patient, results, test
             </tr>
           </thead>
           <tbody>
-            {panel.fields.map(field => {
+            {CBC_DIRECT_FIELDS.map(field => {
               const value = results[field.name];
-              const { flag, color } = getFlag(value, field.refLow, field.refHigh);
+              const { valid, error } = validateDirectValue(value, field);
+              const { flag, color } = getFlagWithInterpretation(value, field.refLow, field.refHigh, field.label);
               return (
                 <tr key={field.name}>
                   <td className="border border-black p-1">{field.label}</td>
-                  <td className="border border-black p-1" style={{ color }}>{value} {flag && <b>({flag})</b>}</td>
+                  <td className="border border-black p-1" style={{ color }}>{!valid ? <span style={{color:'#dc2626'}}>{error}</span> : value} {flag && <b>({flag})</b>}</td>
                   <td className="border border-black p-1">{field.unit}</td>
                   <td className="border border-black p-1">{field.refLow}-{field.refHigh}</td>
                 </tr>
@@ -159,12 +218,42 @@ export const ReportPrint: React.FC<ReportPrintProps> = ({ patient, results, test
             })}
           </tbody>
         </table>
-        {/* Interpretive Comments */}
-        {comments && (
-          <div className="mt-4 p-2 border border-gray-300 bg-gray-50 text-xs">
-            <b>Interpretive Comments:</b> {typeof comments === "string" ? comments : JSON.stringify(comments)}
-          </div>
+        {/* Calculated Section */}
+        <div className="font-semibold mt-4 mb-1">Calculated:</div>
+        <table className="w-full text-xs border border-black mb-4">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border border-black p-1">PARAMETER</th>
+              <th className="border border-black p-1">VALUE</th>
+              <th className="border border-black p-1">UNITS</th>
+              <th className="border border-black p-1">NORMAL RANGE</th>
+              <th className="border border-black p-1">INTERPRETATION</th>
+            </tr>
+          </thead>
+          <tbody>
+            {CBC_CALC_FIELDS.map(field => {
+              const value = (calc as any)[field.name] as string;
+              const { flag, color, interp } = getFlagWithInterpretation(value, field.refLow, field.refHigh, field.label);
+              return (
+                <tr key={field.name}>
+                  <td className="border border-black p-1">{field.label}</td>
+                  <td className="border border-black p-1" style={{ color }}>{value} {flag && <b>({flag})</b>}</td>
+                  <td className="border border-black p-1">{field.unit}</td>
+                  <td className="border border-black p-1">{field.refLow}-{field.refHigh}</td>
+                  <td className="border border-black p-1">{interp}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {/* Calculation Errors */}
+        {calc.errors.length > 0 && (
+          <div className="text-xs text-red-600 mb-2">Calculation errors: {calc.errors.join(", ")}</div>
         )}
+        {/* Interpretive Comments */}
+        <div className="mt-4 p-2 border border-gray-300 bg-gray-50 text-xs">
+          <b>Interpretive Comments:</b> {cbcInterpretation(results, calc)}
+        </div>
         {/* Footer */}
         <div className="flex justify-between items-end mt-8">
           <div className="text-xs text-gray-600">
