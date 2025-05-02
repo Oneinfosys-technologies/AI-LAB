@@ -22,6 +22,7 @@ import HealthChat from "@/pages/health-chat";
 import HealthInsights from "@/pages/health-insights";
 import ReportingPage from "@/pages/admin/reporting";
 import ReportPrintPage from "@/pages/report-print";
+import AdminTestResultEntryPage from "@/pages/admin/test-result-entry";
 
 function Router() {
   return (
@@ -40,6 +41,7 @@ function Router() {
       <ProtectedRoute path="/admin" component={AdminDashboard} roles={["admin", "superadmin"]} />
       <ProtectedRoute path="/admin/tests" component={TestManagement} roles={["admin", "superadmin"]} />
       <ProtectedRoute path="/admin/reporting" component={ReportingPage} roles={["admin", "superadmin"]} />
+      <ProtectedRoute path="/admin/test-result-entry" component={AdminTestResultEntryPage} roles={["admin", "superadmin"]} />
       <ProtectedRoute path="/sa-dashboard" component={SuperAdminDashboard} roles={["superadmin"]} />
       <Route path="/report-print/:reportId" component={ReportPrintPage} />
       <Route component={NotFound} />
