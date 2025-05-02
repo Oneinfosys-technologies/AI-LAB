@@ -33,9 +33,14 @@ const TEST_PANELS: Record<string, TestPanel> = {
     fields: [
       { name: "hemoglobin", label: "Hemoglobin (g/dL)", unit: "g/dL", required: true },
       { name: "hematocrit", label: "Hematocrit (%)", unit: "%", required: true },
-      { name: "rbc", label: "RBC (million/uL)", unit: "million/uL", required: true },
-      { name: "wbc", label: "WBC (thousand/uL)", unit: "thousand/uL", required: true },
-      { name: "platelet", label: "Platelet (thousand/uL)", unit: "thousand/uL", required: true },
+      { name: "rbcCount", label: "RBC (million/µL)", unit: "million/µL", required: true },
+      { name: "wbcCount", label: "WBC (thousand/µL)", unit: "thousand/µL", required: true },
+      { name: "plateletCount", label: "Platelet (thousand/µL)", unit: "thousand/µL", required: true },
+      { name: "neutrophils", label: "Neutrophils (%)", unit: "%", required: true },
+      { name: "lymphocytes", label: "Lymphocytes (%)", unit: "%", required: true },
+      { name: "eosinophils", label: "Eosinophils (%)", unit: "%", required: true },
+      { name: "monocytes", label: "Monocytes (%)", unit: "%", required: true },
+      { name: "basophils", label: "Basophils (%)", unit: "%", required: true },
     ],
     calculate: (values: Record<string, any>) => values, // No calculated fields for now
   },
@@ -217,7 +222,11 @@ export function ActiveTests() {
         {resultModal.open && (() => {
           const panel = getPanel(bookings?.find(b => b.id === resultModal.bookingId)?.test?.name || "");
           if (!panel) return null;
-          const calculated = panel.calculate(resultForm);
+          const requiredFields = panel.fields.filter(f => f.required);
+          const isValid = requiredFields.every(f => {
+            const v = resultForm[f.name];
+            return v !== undefined && v !== null && v !== '' && !isNaN(Number(v)) && Number(v) > 0;
+          });
           return (
             <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
               <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-lg w-full max-w-md">
@@ -226,9 +235,9 @@ export function ActiveTests() {
                   onSubmit={e => {
                     e.preventDefault();
                     if (!resultModal.bookingId) return;
-                    const payload = { ...calculated };
+                    const payload = { ...resultForm };
                     panel.fields.forEach(field => {
-                      if (!field.calculated && payload[field.name] !== undefined && payload[field.name] !== '') {
+                      if (payload[field.name] !== undefined && payload[field.name] !== '') {
                         payload[field.name] = Number(payload[field.name]);
                       }
                     });
@@ -243,25 +252,22 @@ export function ActiveTests() {
                     {panel.fields.map(field => (
                       <div key={field.name} className="flex flex-col">
                         <label className="text-xs font-medium mb-1">{field.label}</label>
-                        {field.calculated ? (
-                          <input type="text" readOnly className="input input-bordered bg-gray-100" value={calculated[field.name] || ''} />
-                        ) : (
-                          <input
-                            type="number"
-                            step="0.01"
-                            required={field.required}
-                            placeholder={field.label}
-                            className="input input-bordered"
-                            value={resultForm[field.name] || ''}
-                            onChange={e => setResultForm((f: any) => ({ ...f, [field.name]: e.target.value }))}
-                          />
-                        )}
+                        <input
+                          type="number"
+                          step="0.01"
+                          required={field.required}
+                          min={field.required ? 0.01 : undefined}
+                          placeholder={`${field.label}`}
+                          className="input input-bordered"
+                          value={resultForm[field.name] || ''}
+                          onChange={e => setResultForm((f: any) => ({ ...f, [field.name]: e.target.value }))}
+                        />
                       </div>
                     ))}
                   </div>
                   <div className="flex gap-2 justify-end mt-4">
                     <Button type="button" variant="outline" onClick={() => setResultModal({ open: false })}>Cancel</Button>
-                    <Button type="submit" disabled={cbcMutation.isPending}>{cbcMutation.isPending ? "Saving..." : "Save Result"}</Button>
+                    <Button type="submit" disabled={!isValid || cbcMutation.isPending}>{cbcMutation.isPending ? "Saving..." : "Save Result"}</Button>
                   </div>
                 </form>
               </div>
