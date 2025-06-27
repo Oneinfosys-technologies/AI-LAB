@@ -109,6 +109,11 @@ export function Sidebar({ className, isMobile = false }: SidebarProps) {
       icon: <FileText className="mr-3 h-5 w-5" />,
     },
     {
+      name: "Test Result Entry",
+      path: "/admin/test-result-entry",
+      icon: <FileText className="mr-3 h-5 w-5" />,
+    },
+    {
       name: "Reports History",
       path: "/admin/reports-history",
       icon: <FileText className="mr-3 h-5 w-5" />,
