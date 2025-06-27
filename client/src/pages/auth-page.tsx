@@ -301,15 +301,6 @@ export default function AuthPage() {
                   </div>
                 </TabsContent>
               </Tabs>
-              {/* Google Sign-In Button */}
-              <div className="mt-6 flex flex-col items-center">
-                <a href="/api/auth/google" className="w-full">
-                  <Button type="button" variant="outline" className="w-full flex items-center justify-center gap-2">
-                    <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" className="h-5 w-5" />
-                    Sign in with Google
-                  </Button>
-                </a>
-              </div>
             </CardContent>
             <CardFooter className="flex justify-center text-sm text-slate-500 dark:text-slate-400">
               By continuing, you agree to our Terms of Service and Privacy Policy

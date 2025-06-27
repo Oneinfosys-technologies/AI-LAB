@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { useAuth } from '@/hooks/use-auth';
-import { useQueryClient } from '@tanstack/react-query';
 
 const TEST_TYPES = [
   { id: 'cbc', name: 'Complete Blood Count (CBC)' },
@@ -25,7 +24,6 @@ const TEST_TYPES = [
 
 export default function AdminTestResultEntryPage() {
   const { user, isLoading } = useAuth();
-  const queryClient = useQueryClient();
   const [selectedTest, setSelectedTest] = useState<string>('');
   const [patientId, setPatientId] = useState<string>('');
   const [patientInfo, setPatientInfo] = useState<any>(null);
@@ -72,9 +70,6 @@ export default function AdminTestResultEntryPage() {
         return;
       }
       setSuccess('Test results saved successfully!');
-      // Invalidate queries to refresh report history for both admin and patient
-      queryClient.invalidateQueries(["/api/admin/reports"]);
-      queryClient.invalidateQueries(["/api/reports"]);
     } catch (err: any) {
       setError(err?.message || 'An unexpected error occurred.');
     }

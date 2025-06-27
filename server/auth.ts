@@ -7,7 +7,6 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import * as bcrypt from "bcrypt";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 
 declare global {
   namespace Express {
@@ -76,8 +75,7 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     cookie: {
       maxAge: 1000 * 60 * 60 * 24, // 24 hours
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
+      secure: process.env.NODE_ENV === "production"
     }
   };
 
@@ -111,30 +109,6 @@ export function setupAuth(app: Express) {
       }
     }),
   );
-
-  passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID!,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    callbackURL: "https://ai-lab.oneinfosys.in/api/auth/google/callback"
-  },
-  async (accessToken, refreshToken, profile, done) => {
-    try {
-      let user = await storage.getUserByEmail(profile.emails[0].value);
-      if (!user) {
-        user = await storage.createUser({
-          username: profile.id,
-          email: profile.emails[0].value,
-          fullName: profile.displayName,
-          password: "", // Not needed for Google users
-          role: "user"
-        });
-      }
-      return done(null, user);
-    } catch (err) {
-      return done(err);
-    }
-  }
-  ));
 
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
@@ -223,13 +197,4 @@ export function setupAuth(app: Express) {
     const { password, ...userWithoutPassword } = req.user;
     res.json(userWithoutPassword);
   });
-
-  app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
-  app.get("/api/auth/google/callback",
-    passport.authenticate("google", { failureRedirect: "/auth" }),
-    (req, res) => {
-      // Successful authentication, redirect home.
-      res.redirect("/");
-    }
-  );
 }
