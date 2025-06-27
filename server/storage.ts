@@ -1328,8 +1328,4 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Uncomment to use database storage
-// export const storage = new DatabaseStorage();
-
-// Use in-memory storage until database issues are resolved
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
