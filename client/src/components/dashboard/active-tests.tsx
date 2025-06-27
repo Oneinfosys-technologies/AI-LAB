@@ -115,7 +115,7 @@ export function ActiveTests() {
   const { toast } = useToast();
   
   const { data: bookings, isLoading, refetch } = useQuery<BookingWithDetails[]>({
-    queryKey: ["/api/admin/bookings"],
+    queryKey: ["/api/bookings"],
   });
   
   // Filter active tests (not completed)
